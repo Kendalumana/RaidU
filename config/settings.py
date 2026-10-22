@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework.authtoken',
     'rest_framework',
+    'usuarios',
 ]
 
 REST_FRAMEWORK = {
@@ -79,6 +80,8 @@ DATABASES = {
         'PASSWORD': os.environ["DB_PASSWORD"],
         'HOST': os.getenv("DB_HOST", "127.0.0.1"),
         'PORT': os.getenv("DB_PORT", "3306"),
+        # Guarda todos los cambios de la peticion o los revierte si ocurre un error.
+        'ATOMIC_REQUESTS': True,
         'OPTIONS': {
             "charset": "utf8mb4",
             "isolation_level": "read committed"

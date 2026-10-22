@@ -1,8 +1,6 @@
-# RaidU — Backend API
+#  RaidU – Transporte Compartido UCR
 
-**Plataforma universitaria de transporte compartido (carpool) para estudiantes de la UCR, Sede del Pacífico.**  
-**Curso:** IF0009 – Desarrollo de Software IV  
-**Tecnologías:** Python 3.14+ | Django 5.2 LTS | Django REST Framework (DRF) | MySQL 8.0 | TokenAuthentication  
+## ¿Qué es RaidU?
 
 ---
 
@@ -63,110 +61,70 @@ pip install -r requirements.txt
 
 ## 4. Configuración de Base de Datos MySQL
 
-Cada equipo de desarrollo mantiene su propia instancia local de MySQL. Ejecute el siguiente script SQL en MySQL Workbench o en la consola de MySQL con usuario administrador (`root`):
+La idea es que los estudiantes que tienen vehículo puedan ofrecer viajes a otros compañeros que necesitan transporte, compartiendo los gastos y aprovechando los espacios disponibles.
 
-```sql
--- 1. Crear base de datos con soporte UTF-8 completo
-CREATE DATABASE IF NOT EXISTS raidu_db
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
+Este proyecto se desarrolla para el curso **IF0009 – Desarrollo de Software IV**.
 
--- 2. Crear usuario específico para la aplicación
-CREATE USER IF NOT EXISTS 'raidu_user'@'localhost' IDENTIFIED BY 'tu_contraseña_segura';
+## ¿Qué permitirá hacer?
 
--- 3. Otorgar permisos sobre la base de datos
-GRANT ALL PRIVILEGES ON raidu_db.* TO 'raidu_user'@'localhost';
-FLUSH PRIVILEGES;
-```
+- Registrar estudiantes en la plataforma.
+- Registrar los vehículos de los conductores.
+- Publicar viajes con horarios, rutas y cupos disponibles.
+- Reservar espacios en los viajes.
+- Calcular cuánto debe aportar cada pasajero.
+- Calificar la experiencia después de cada viaje.
 
----
+## Tecnologías utilizadas
 
-## 5. Configuración de Variables de Entorno (`.env`)
+- **Python:** lenguaje de programación.
+- **Django:** desarrollo del backend.
+- **Django REST Framework:** creación de la API REST.
+- **MySQL:** almacenamiento de datos.
+- **Git y GitHub:** control de versiones y trabajo en equipo.
 
-Copie la plantilla de ejemplo `.env.example` a un archivo local `.env`:
+## ¿Cómo ejecutar el proyecto?
 
-```bash
-# Windows (PowerShell)
-Copy-Item .env.example .env
+**1. Clonar el repositorio:**
 
-# Linux / macOS
-cp .env.example .env
-```
+`git clone https://github.com/Kendalumana/RaidU.git`
 
-Edite el archivo `.env` con los parámetros de su entorno:
+**2. Entrar a la carpeta:**
 
-```env
-# Configuración general de Django
-SECRET_KEY=clave_secreta_unica_para_tu_entorno
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
+`cd RaidU`
 
-# Credenciales de base de datos MySQL
-DB_NAME=raidu_db
-DB_USER=raidu_user
-DB_PASSWORD=tu_contraseña_segura
-DB_HOST=127.0.0.1
-DB_PORT=3306
-```
+**3. Crear y activar el entorno virtual:**
 
-> **Importante:** El archivo `.env` contiene credenciales sensibles y está ignorado por Git. Nunca debe subirse al repositorio.
+`python -m venv .venv`
 
----
+En Windows:
 
-## 6. Verificación, Migraciones y Superusuario
+`.\.venv\Scripts\Activate.ps1`
 
-### Paso 1: Comprobar el estado del sistema Django
+**4. Instalar las dependencias:**
 
-```bash
-python manage.py check
-```
-*Debe indicar: `System check identified no issues (0 silenced)`.*
+`pip install -r requirements.txt`
 
-### Paso 2: Ejecutar las migraciones iniciales
+**5. Configurar la base de datos:**
 
-Aplica las tablas base del sistema (`auth`, `authtoken`, `contenttypes`, `sessions`, `admin`):
+Crear una base de datos MySQL llamada `raidu_db` y configurar las credenciales en un archivo `.env`, tomando como referencia `.env.example`.
 
-```bash
-python manage.py migrate
-```
+**6. Preparar y ejecutar Django:**
 
-### Paso 3: Crear el usuario administrador
+`python manage.py migrate`
 
-```bash
-python manage.py createsuperuser
-```
-Siga las instrucciones interactivas ingresando usuario, correo y contraseña. La validación de correo institucional se implementará en la fase de usuarios.
+`python manage.py runserver`
 
----
+El servidor estará disponible en:
 
-## 7. Ejecución del Servidor de Desarrollo
+`http://127.0.0.1:8000/`
 
-Inicie el servidor local:
+## Estado actual del proyecto
 
-```bash
-python manage.py runserver
-```
+Actualmente estamos trabajando en el desarrollo del backend. Ya se preparó la estructura inicial de Django, la configuración de MySQL y la autenticación básica por tokens.
 
-El servidor estará accesible en: `http://127.0.0.1:8000/`
+Las funciones de estudiantes, vehículos, viajes, reservas y calificaciones se irán agregando conforme avancemos.
 
----
-
-## 8. Estructura del Proyecto
-
-```text
-RaidU/
-├── config/                  # Paquete principal de configuración del proyecto
-│   ├── __init__.py
-│   ├── asgi.py
-│   ├── settings.py         # Configuración (MySQL, DRF, authtoken, .env)
-│   ├── urls.py             # Enrutador principal con prefijo /api/
-│   └── wsgi.py
-├── manage.py               # Punto de entrada para utilidades administrativas
-├── requirements.txt        # Dependencias fijadas y reproducibles
-├── .env.example            # Plantilla de variables de entorno sin secretos
-├── .gitignore              # Exclusiones de Git (.venv, .env, __pycache__, etc.)
-└── README.md               # Documentación y guía de instalación del proyecto
-```
+**Nota:** Los pagos serán simulados. La plataforma calculará cuánto corresponde pagar a cada pasajero, pero no realizará cobros reales.
 
 ---
 

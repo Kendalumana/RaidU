@@ -6,8 +6,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/token/', obtain_auth_token, name='api_token'),
     path('api/', include('usuarios.urls')),
+    path('api/vehiculos/', include('vehiculos.urls')),
     # Enrutamiento base preparado para las futuras aplicaciones del proyecto (/api/):
-    # path('api/vehiculos/', include('vehiculos.urls')),
     # path('api/viajes/', include('viajes.urls')),
     # path('api/reservas/', include('reservas.urls')),
     # path('api/calificaciones/', include('calificaciones.urls')),

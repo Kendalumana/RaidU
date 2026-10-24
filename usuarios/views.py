@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.paginator import InvalidPage, Paginator
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
@@ -40,4 +41,14 @@ def usuarios_api(request):
     if not request.user.is_staff and not request.user.groups.filter(name='Soporte').exists():
         return Response({'detail': 'Se requiere administrador o soporte.'}, status=status.HTTP_403_FORBIDDEN)
     usuarios = get_user_model().objects.select_related('perfil').order_by('id')
-    return Response(UsuarioSerializer(usuarios, many=True).data)
+    paginator = Paginator(usuarios, 10)
+    try:
+        pagina = paginator.page(request.query_params.get('page', 1))
+    except InvalidPage:
+        return Response({'detail': 'Pagina no valida.'}, status=status.HTTP_404_NOT_FOUND)
+    return Response({
+        'count': paginator.count,
+        'page': pagina.number,
+        'total_pages': paginator.num_pages,
+        'results': UsuarioSerializer(pagina.object_list, many=True).data,
+    })

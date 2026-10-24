@@ -1,5 +1,19 @@
 #  RaidU – Transporte Compartido UCR
 
+### Paginación de usuarios
+
+`GET /api/usuarios/` devuelve 10 usuarios por página, ordenados por identificador.
+Para consultar otra página, use `/api/usuarios/?page=2` con token de administrador
+o del grupo `Soporte`. La respuesta contiene `count` (total de usuarios), `page`,
+`total_pages` y `results` (usuarios de esa página). Una página inválida o fuera de
+rango responde 404. Los permisos existentes se mantienen: 401 sin autenticación
+y 403 para usuarios regulares.
+
+Se utiliza `Paginator` de Django:
+https://docs.djangoproject.com/en/5.2/topics/pagination/
+
+Pruebas del módulo: `python manage.py test usuarios --noinput`.
+
 ## ¿Qué es RaidU?
 
 ---

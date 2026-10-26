@@ -63,9 +63,9 @@ El servidor estará disponible en:
 
 ## Estado actual del proyecto
 
-Actualmente estamos trabajando en el desarrollo del backend. Ya se preparó la estructura inicial de Django, la configuración de MySQL y la autenticación básica por tokens.
+El backend incluye la estructura de Django, la configuración de MySQL, autenticación por tokens, registro y perfil de usuarios, y CRUD de vehículos con permisos, búsqueda y paginación.
 
-Las funciones de estudiantes, vehículos, viajes, reservas y calificaciones se irán agregando conforme avancemos.
+Las funciones de viajes, reservas y calificaciones siguen pendientes.
 
 **Nota:** Los pagos serán simulados. La plataforma calculará cuánto corresponde pagar a cada pasajero, pero no realizará cobros reales.
 
@@ -74,3 +74,37 @@ Las funciones de estudiantes, vehículos, viajes, reservas y calificaciones se i
 **Universidad de Costa Rica – Sede del Pacífico**
 
 **Curso:** IF0009 – Desarrollo de Software IV
+
+## API de usuarios y vehículos
+
+Las solicitudes protegidas requieren `Authorization: Token <token>`.
+El token se obtiene con `POST /api/token/`.
+
+### Usuarios
+
+- `POST /api/usuarios/registro/`: registro público con correo UCR y contraseña válida.
+- `GET /api/perfil/` y `PATCH /api/perfil/`: consulta y actualización del perfil propio.
+- `GET /api/usuarios/`: listado para administrador o grupo `Soporte`.
+  Devuelve 10 usuarios por página; `?page=2` consulta otra página.
+  La respuesta incluye `count`, `page`, `total_pages` y `results`.
+
+### Vehículos
+
+- `GET /api/vehiculos/`: lista los vehículos propios para usuarios regulares;
+  administrador y `Soporte` pueden consultar todos.
+- `POST /api/vehiculos/`: crea un vehículo del usuario autenticado.
+- `GET /api/vehiculos/<id>/`: consulta un vehículo según los permisos anteriores.
+- `PUT`, `PATCH` y `DELETE /api/vehiculos/<id>/`: modifica o elimina un vehículo
+  propio; un administrador puede gestionar cualquiera. `Soporte` solo tiene lectura.
+- `?search=texto` busca por placa, marca o modelo. `?page=2` consulta otra página,
+  con 10 vehículos por página y los campos `count`, `page`, `total_pages` y `results`.
+- Una página inválida devuelve 404. Una solicitud protegida sin autenticación
+  devuelve 401 y una operación no permitida devuelve 403.
+
+### Pruebas de los módulos
+
+Desde la raíz, con el entorno virtual activo y MySQL configurado para pruebas:
+
+```powershell
+python manage.py test usuarios vehiculos --noinput
+```

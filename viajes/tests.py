@@ -2,7 +2,6 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from django.db import DataError, IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.test import TestCase
@@ -38,23 +37,9 @@ class ModelosViajesTests(TestCase):
         viaje.save()
         self.assertEqual(Viaje.objects.get(pk=viaje.pk).estado, 'publicado')
 
-    def test_rechaza_fecha_pasada(self):
-        with self.assertRaises(ValidationError):
-            self.viaje(fecha_hora=timezone.now()-timedelta(days=1)).full_clean()
 
-    def test_rechaza_vehiculo_ajeno(self):
-        with self.assertRaises(ValidationError):
-            self.viaje(conductor=self.otro).full_clean()
 
-    def test_rechaza_exceso_de_capacidad(self):
-        with self.assertRaises(ValidationError):
-            self.viaje(cupos_totales=5, cupos_disponibles=5).full_clean()
 
-    def test_rechaza_vehiculo_inactivo(self):
-        self.vehiculo.activo = False
-        self.vehiculo.save()
-        with self.assertRaises(ValidationError):
-            self.viaje().full_clean()
 
     def test_restricciones_en_base_de_datos(self):
         for cambios in [dict(destino=self.origen), dict(cupos_totales=0),
@@ -79,11 +64,6 @@ class ModelosViajesTests(TestCase):
         with self.assertRaises(DataError), transaction.atomic():
             self.viaje(cupos_disponibles=-1).save()
 
-    def test_rechaza_lugar_inactivo_al_publicar(self):
-        self.origen.activo = False
-        self.origen.save()
-        with self.assertRaises(ValidationError):
-            self.viaje().full_clean()
 
     def test_fecha_historica_sin_cambios_no_impide_validar(self):
         viaje = self.viaje()

@@ -92,3 +92,14 @@ class ModelosViajesTests(TestCase):
         viaje.refresh_from_db()
         viaje.estado = Viaje.Estado.FINALIZADO
         viaje.full_clean()
+
+
+class CatalogoInicialTests(TestCase):
+    def test_carga_los_cuatro_puntos_universitarios(self):
+        nombres = [
+            'Sede Rodrigo Facio Brenes',
+            'Sede de Occidente (San Ramón)',
+            'Sede del Pacífico (Puntarenas)',
+            'Recinto de Esparza (Sede del Pacífico)',
+        ]
+        self.assertEqual(Lugar.objects.filter(nombre__in=nombres, activo=True, tipo='sede').count(), 4)

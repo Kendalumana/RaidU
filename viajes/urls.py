@@ -1,2 +1,2 @@
-# Falta agregar las rutas de lugares y viajes y conectarlas en config/urls.py.
+# Falta agregar las rutas de viajes y conectarlas en config/urls.py.
 urlpatterns = []

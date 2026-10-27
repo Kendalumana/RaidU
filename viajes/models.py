@@ -2,27 +2,13 @@ from django.conf import settings
 from django.db import models
 
 
-class Lugar(models.Model):
-    # Las cuatro sedes y recintos se cargan en la migracion 0002_lugares_iniciales.
-    class Tipo(models.TextChoices):
-        SEDE = 'sede', 'Sede'
-        LOCALIDAD = 'localidad', 'Localidad'
-
-    nombre = models.CharField(max_length=150, unique=True)
-    tipo = models.CharField(max_length=10, choices=Tipo.choices)
-    activo = models.BooleanField(default=True)
-
-    class Meta:
-        constraints = [
-            models.CheckConstraint(condition=models.Q(tipo__in=['sede', 'localidad']),
-                                   name='lugar_tipo_valido'),
-        ]
-
-    def __str__(self):
-        return self.nombre
-
-
 class Viaje(models.Model):
+    class Sede(models.TextChoices):
+        RODRIGO_FACIO = 'rodrigo_facio', 'Sede Rodrigo Facio Brenes'
+        SAN_RAMON = 'san_ramon', 'Sede de Occidente (San Ramón)'
+        ESPARZA = 'esparza', 'Recinto de Esparza'
+        PUNTARENAS = 'puntarenas', 'Sede del Pacífico (Puntarenas)'
+
     class Estado(models.TextChoices):
         PUBLICADO = 'publicado', 'Publicado'
         LLENO = 'lleno', 'Lleno'
@@ -34,8 +20,10 @@ class Viaje(models.Model):
                                   related_name='viajes_conducidos')
     vehiculo = models.ForeignKey('vehiculos.Vehiculo', on_delete=models.PROTECT,
                                 related_name='viajes')
-    origen = models.ForeignKey(Lugar, on_delete=models.PROTECT, related_name='viajes_origen')
-    destino = models.ForeignKey(Lugar, on_delete=models.PROTECT, related_name='viajes_destino')
+    sede_origen = models.CharField(max_length=20, choices=Sede.choices)
+    sede_destino = models.CharField(max_length=20, choices=Sede.choices)
+    lugar_origen = models.CharField(max_length=150, blank=True, default='')
+    lugar_destino = models.CharField(max_length=150, blank=True, default='')
     fecha_hora = models.DateTimeField()
     cupos_totales = models.PositiveSmallIntegerField()
     cupos_disponibles = models.PositiveSmallIntegerField()
@@ -44,7 +32,7 @@ class Viaje(models.Model):
 
     class Meta:
         constraints = [
-            models.CheckConstraint(condition=~models.Q(origen=models.F('destino')),
+            models.CheckConstraint(condition=~models.Q(sede_origen=models.F('sede_destino')),
                                    name='viaje_lugares_distintos'),
             models.CheckConstraint(condition=models.Q(cupos_totales__gte=1),
                                    name='viaje_cupos_totales_positivos'),
@@ -59,4 +47,4 @@ class Viaje(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.origen} - {self.destino} ({self.fecha_hora})'
+        return f'{self.get_sede_origen_display()} - {self.get_sede_destino_display()} ({self.fecha_hora})'

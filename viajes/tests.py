@@ -8,8 +8,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from vehiculos.models import Vehiculo
-from .models import Lugar, Viaje
-
+from .models import Viaje
 
 class ModelosViajesTests(TestCase):
     def setUp(self):
@@ -19,12 +18,10 @@ class ModelosViajesTests(TestCase):
             propietario=self.conductor, placa='VIA101', marca='Toyota',
             modelo='Yaris', capacidad=4,
         )
-        self.origen = Lugar.objects.create(nombre='Sede del Pacifico', tipo='sede')
-        self.destino = Lugar.objects.create(nombre='Esparza', tipo='localidad')
 
     def viaje(self, **cambios):
         datos = dict(conductor=self.conductor, vehiculo=self.vehiculo,
-                     origen=self.origen, destino=self.destino,
+                     sede_origen=Viaje.Sede.PUNTARENAS, sede_destino=Viaje.Sede.ESPARZA,
                      fecha_hora=timezone.now() + timedelta(days=1),
                      cupos_totales=4, cupos_disponibles=4,
                      costo_total=Decimal('6000.00'))
@@ -37,25 +34,17 @@ class ModelosViajesTests(TestCase):
         viaje.save()
         self.assertEqual(Viaje.objects.get(pk=viaje.pk).estado, 'publicado')
 
-
-
-
-
     def test_restricciones_en_base_de_datos(self):
-        for cambios in [dict(destino=self.origen), dict(cupos_totales=0),
+        for cambios in [dict(sede_destino=Viaje.Sede.PUNTARENAS), dict(cupos_totales=0),
                         dict(cupos_disponibles=5),
                         dict(costo_total=0), dict(estado='invalido')]:
             with self.subTest(cambios=cambios):
                 with self.assertRaises(IntegrityError), transaction.atomic():
                     self.viaje(**cambios).save()
 
-    def test_lugar_unico(self):
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            Lugar.objects.create(nombre=self.origen.nombre, tipo='sede')
-
     def test_protege_relaciones_del_viaje(self):
         self.viaje().save()
-        for objeto in [self.conductor, self.vehiculo, self.origen, self.destino]:
+        for objeto in [self.conductor, self.vehiculo]:
             with self.subTest(modelo=type(objeto).__name__):
                 with self.assertRaises(ProtectedError):
                     objeto.delete()
@@ -63,7 +52,6 @@ class ModelosViajesTests(TestCase):
     def test_mysql_rechaza_cupos_negativos(self):
         with self.assertRaises(DataError), transaction.atomic():
             self.viaje(cupos_disponibles=-1).save()
-
 
     def test_fecha_historica_sin_cambios_no_impide_validar(self):
         viaje = self.viaje()
@@ -73,13 +61,15 @@ class ModelosViajesTests(TestCase):
         viaje.estado = Viaje.Estado.FINALIZADO
         viaje.full_clean()
 
-
-class CatalogoInicialTests(TestCase):
-    def test_carga_los_cuatro_puntos_universitarios(self):
-        nombres = [
-            'Sede Rodrigo Facio Brenes',
-            'Sede de Occidente (San Ramón)',
-            'Sede del Pacífico (Puntarenas)',
-            'Recinto de Esparza (Sede del Pacífico)',
-        ]
-        self.assertEqual(Lugar.objects.filter(nombre__in=nombres, activo=True, tipo='sede').count(), 4)
+    def test_cuatro_sedes_y_detalles_opcionales(self):
+        self.assertEqual(set(Viaje.Sede.values), {'rodrigo_facio', 'san_ramon', 'esparza', 'puntarenas'})
+        viaje = self.viaje()
+        viaje.full_clean()
+        viaje.save()
+        self.assertEqual(viaje.lugar_origen, '')
+        self.assertEqual(viaje.lugar_destino, '')
+        viaje.lugar_origen = 'Entrada principal'
+        viaje.lugar_destino = 'Parada del recinto'
+        viaje.save()
+        viaje.refresh_from_db()
+        self.assertEqual(viaje.lugar_destino, 'Parada del recinto')

@@ -88,6 +88,12 @@ class ViajesAPITests(APITestCase):
     def crear(self, **cambios):
         return self.client.post('/api/viajes/', self.datos | cambios, format='json')
 
+    def ocupar_cupos(self, viaje, cupos):
+        self.client.force_authenticate(self.otro)
+        respuesta = self.client.post('/api/reservas/', {'viaje': viaje.pk, 'cupos': cupos}, format='json')
+        self.assertEqual(respuesta.status_code, 201)
+        self.client.force_authenticate(self.usuario)
+
     def test_solo_publicado_al_crear(self):
         for estado in ['lleno', 'en_curso', 'finalizado', 'cancelado']:
             with self.subTest(estado=estado):
@@ -144,14 +150,13 @@ class ViajesAPITests(APITestCase):
         url = f"/api/viajes/{respuesta.data['id']}/"
         self.assertEqual(self.client.patch(url, {'estado': 'lleno'}).status_code, 400)
         viaje = Viaje.objects.get(pk=respuesta.data['id'])
-        Viaje.objects.filter(pk=viaje.pk).update(cupos_disponibles=0, estado='lleno')
+        self.ocupar_cupos(viaje, 4)
         self.assertEqual(self.client.patch(url, {'estado': 'publicado'}).status_code, 400)
 
     def test_cambiar_capacidad_conserva_cupos_ocupados(self):
         respuesta = self.crear()
         viaje = Viaje.objects.get(pk=respuesta.data['id'])
-        # El contrato de Viaje conserva dos cupos ya ocupados, sin depender de otra app.
-        Viaje.objects.filter(pk=viaje.pk).update(cupos_disponibles=2)
+        self.ocupar_cupos(viaje, 2)
         url = f'/api/viajes/{viaje.pk}/'
         self.assertEqual(self.client.patch(url, {'cupos_totales': 1}).status_code, 400)
         respuesta = self.client.patch(url, {'cupos_totales': 3})
@@ -167,6 +172,6 @@ class ViajesAPITests(APITestCase):
     def test_no_borra_viaje_con_cupos_ocupados(self):
         respuesta = self.crear()
         viaje = Viaje.objects.get(pk=respuesta.data['id'])
-        Viaje.objects.filter(pk=viaje.pk).update(cupos_disponibles=3)
+        self.ocupar_cupos(viaje, 1)
         self.assertEqual(self.client.delete(f'/api/viajes/{viaje.pk}/').status_code, 409)
         self.assertTrue(Viaje.objects.filter(pk=viaje.pk).exists())

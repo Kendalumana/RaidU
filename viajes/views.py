@@ -1,5 +1,6 @@
-from django.core.paginator import Paginator
+from config.paginacion import respuesta_paginada
 from django.db import transaction
+from django.db.models import Sum
 from django.db.models.deletion import ProtectedError
 
 from rest_framework import status
@@ -9,19 +10,7 @@ from rest_framework.response import Response
 
 from .models import Viaje
 from .serializers import ViajeSerializer, FiltrosViajeSerializer
-
-
-def respuesta_paginada(queryset, serializer_class, page_number):
-    paginator = Paginator(queryset, 10)
-    page = paginator.get_page(page_number)
-    serializer = serializer_class(page.object_list, many=True)
-
-    return Response({
-        'pagina_actual': page.number,
-        'total_paginas': paginator.num_pages,
-        'total_registros': paginator.count,
-        'resultados': serializer.data
-    })
+from reservas.services import recalcular_viaje
 
 
 @api_view(['GET', 'POST'])
@@ -202,13 +191,16 @@ def detalle_viaje(request, id):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            ocupados = viaje.cupos_totales - viaje.cupos_disponibles
+            ocupados = viaje.reservas.filter(estado='confirmada').aggregate(total=Sum('cupos'))['total'] or 0
             cupos_totales = serializer.validated_data.get('cupos_totales', viaje.cupos_totales)
             disponibles = cupos_totales - ocupados
             estado = serializer.validated_data.get('estado', viaje.estado)
             if estado in ['publicado', 'lleno']:
                 estado = 'lleno' if disponibles == 0 else 'publicado'
             serializer.save(cupos_disponibles=disponibles, estado=estado)
+            if viaje.estado == 'cancelado':
+                viaje.reservas.filter(estado='confirmada').update(estado='cancelada', monto_simulado=0)
+            recalcular_viaje(viaje)
 
             return Response(serializer.data)
 

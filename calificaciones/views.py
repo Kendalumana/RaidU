@@ -9,7 +9,7 @@ from rest_framework.response import Response
 
 from usuarios.permisos import es_soporte
 from .models import Calificacion
-from .serializers import CalificacionSerializer
+from .serializers import CalificacionSerializer, FiltrosCalificacionSerializer
 
 
 def respuesta_paginada(queryset, serializer_class, page_number):
@@ -34,45 +34,15 @@ def respuesta_paginada(queryset, serializer_class, page_number):
 def calificaciones_api(request):
 
     if request.method == 'GET':
-        calificaciones = Calificacion.objects.all().order_by('-fecha')
-
-        viaje = request.query_params.get('viaje')
-        calificado = request.query_params.get('calificado')
-        calificador = request.query_params.get('calificador')
-        puntaje = request.query_params.get('puntaje')
-        ordering = request.query_params.get('ordering')
-
-        if viaje:
-            calificaciones = calificaciones.filter(
-                viaje_id=viaje
-            )
-
-        if calificado:
-            calificaciones = calificaciones.filter(
-                calificado_id=calificado
-            )
-
-        if calificador:
-            calificaciones = calificaciones.filter(
-                calificador_id=calificador
-            )
-
-        if puntaje:
-            calificaciones = calificaciones.filter(
-                puntaje=puntaje
-            )
-
-        if ordering == 'fecha':
-            calificaciones = calificaciones.order_by('fecha')
-
-        if ordering == '-fecha':
-            calificaciones = calificaciones.order_by('-fecha')
-
-        if ordering == 'puntaje':
-            calificaciones = calificaciones.order_by('puntaje')
-
-        if ordering == '-puntaje':
-            calificaciones = calificaciones.order_by('-puntaje')
+        filtros = FiltrosCalificacionSerializer(data=request.query_params)
+        filtros.is_valid(raise_exception=True)
+        datos = filtros.validated_data
+        calificaciones = Calificacion.objects.all()
+        campos = {'viaje': 'viaje_id', 'calificado': 'calificado_id', 'calificador': 'calificador_id', 'puntaje': 'puntaje'}
+        for parametro, campo in campos.items():
+            if parametro in datos:
+                calificaciones = calificaciones.filter(**{campo: datos[parametro]})
+        calificaciones = calificaciones.order_by(datos.get('ordering', '-fecha'), 'id')
 
         return respuesta_paginada(
             calificaciones,

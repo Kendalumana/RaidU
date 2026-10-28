@@ -5,6 +5,7 @@ from .models import Viaje
 
 
 class ViajeSerializer(serializers.ModelSerializer):
+    cupos_totales = serializers.IntegerField(min_value=1, max_value=32767)
 
     class Meta:
         model = Viaje
@@ -32,6 +33,8 @@ class ViajeSerializer(serializers.ModelSerializer):
         return valor
 
     def validate(self, data):
+        if not self.instance and data.get('estado', 'publicado') != 'publicado':
+            raise serializers.ValidationError({'estado': 'Un viaje nuevo debe comenzar publicado.'})
         vehiculo = data.get('vehiculo')
         cupos_totales = data.get('cupos_totales')
         sede_origen = data.get('sede_origen')
@@ -69,3 +72,12 @@ class ViajeSerializer(serializers.ModelSerializer):
                 })
 
         return data
+
+
+class FiltrosViajeSerializer(serializers.Serializer):
+    sede_origen = serializers.ChoiceField(choices=Viaje.Sede.choices, required=False)
+    sede_destino = serializers.ChoiceField(choices=Viaje.Sede.choices, required=False)
+    fecha = serializers.DateField(required=False)
+    estado = serializers.ChoiceField(choices=Viaje.Estado.choices, required=False)
+    cupos_minimos = serializers.IntegerField(min_value=0, max_value=32767, required=False)
+    ordering = serializers.ChoiceField(choices=['fecha_hora', '-fecha_hora', 'costo_total', '-costo_total'], required=False)

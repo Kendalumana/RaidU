@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from usuarios.permisos import es_soporte
 from .models import Viaje
-from .serializers import ViajeSerializer
+from .serializers import ViajeSerializer, FiltrosViajeSerializer
 from reservas.services import recalcular_viaje
 
 
@@ -32,43 +32,15 @@ def respuesta_paginada(queryset, serializer_class, page_number):
 def viajes_api(request):
 
     if request.method == 'GET':
-        viajes = Viaje.objects.all().order_by('fecha_hora')
-
-        sede_origen = request.query_params.get('sede_origen')
-        sede_destino = request.query_params.get('sede_destino')
-        fecha = request.query_params.get('fecha')
-        estado = request.query_params.get('estado')
-        cupos_minimos = request.query_params.get('cupos_minimos')
-        ordering = request.query_params.get('ordering')
-
-        if sede_origen:
-            viajes = viajes.filter(sede_origen=sede_origen)
-
-        if sede_destino:
-            viajes = viajes.filter(sede_destino=sede_destino)
-
-        if fecha:
-            viajes = viajes.filter(fecha_hora__date=fecha)
-
-        if estado:
-            viajes = viajes.filter(estado=estado)
-
-        if cupos_minimos:
-            viajes = viajes.filter(
-                cupos_disponibles__gte=cupos_minimos
-            )
-
-        if ordering == 'fecha_hora':
-            viajes = viajes.order_by('fecha_hora')
-
-        if ordering == '-fecha_hora':
-            viajes = viajes.order_by('-fecha_hora')
-
-        if ordering == 'costo_total':
-            viajes = viajes.order_by('costo_total')
-
-        if ordering == '-costo_total':
-            viajes = viajes.order_by('-costo_total')
+        filtros = FiltrosViajeSerializer(data=request.query_params)
+        filtros.is_valid(raise_exception=True)
+        datos = filtros.validated_data
+        viajes = Viaje.objects.all()
+        campos = {'sede_origen': 'sede_origen', 'sede_destino': 'sede_destino', 'fecha': 'fecha_hora__date', 'estado': 'estado', 'cupos_minimos': 'cupos_disponibles__gte'}
+        for parametro, campo in campos.items():
+            if parametro in datos:
+                viajes = viajes.filter(**{campo: datos[parametro]})
+        viajes = viajes.order_by(datos.get('ordering', 'fecha_hora'), 'id')
 
         return respuesta_paginada(
             viajes,

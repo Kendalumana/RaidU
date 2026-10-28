@@ -100,3 +100,11 @@ class CalificacionSerializer(serializers.ModelSerializer):
                 })
 
         return data
+
+
+class FiltrosCalificacionSerializer(serializers.Serializer):
+    viaje = serializers.IntegerField(min_value=1, max_value=9223372036854775807, required=False)
+    calificador = serializers.IntegerField(min_value=1, max_value=9223372036854775807, required=False)
+    calificado = serializers.IntegerField(min_value=1, max_value=9223372036854775807, required=False)
+    puntaje = serializers.IntegerField(min_value=1, max_value=5, required=False)
+    ordering = serializers.ChoiceField(choices=['fecha', '-fecha', 'puntaje', '-puntaje'], required=False)

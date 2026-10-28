@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 
 from usuarios.permisos import es_soporte
-from viajes.views import respuesta_paginada
+from config.paginacion import respuesta_paginada
 from .models import Reserva
 from .serializers import ReservaSerializer
 from .services import guardar_reserva

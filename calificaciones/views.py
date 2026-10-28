@@ -1,4 +1,4 @@
-from django.core.paginator import Paginator
+from config.paginacion import respuesta_paginada
 from django.contrib.auth import get_user_model
 from django.db.models import Avg
 
@@ -10,23 +10,6 @@ from rest_framework.response import Response
 from usuarios.permisos import es_soporte
 from .models import Calificacion
 from .serializers import CalificacionSerializer, FiltrosCalificacionSerializer
-
-
-def respuesta_paginada(queryset, serializer_class, page_number):
-    paginator = Paginator(queryset, 10)
-    page = paginator.get_page(page_number)
-
-    serializer = serializer_class(
-        page.object_list,
-        many=True
-    )
-
-    return Response({
-        'pagina_actual': page.number,
-        'total_paginas': paginator.num_pages,
-        'total_registros': paginator.count,
-        'resultados': serializer.data
-    })
 
 
 @api_view(['GET', 'POST'])

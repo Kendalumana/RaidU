@@ -1,0 +1,1427 @@
+{
+  "info": {
+    "name": "RaidU - Reservas e integracion con viajes",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "30 solicitudes en orden. Usar un viaje nuevo futuro publicado de 4 cupos y costo 6000, y cuatro tokens de cuentas diferentes. token_conductor debe ser el conductor; token_soporte debe pertenecer a Soporte. El recorrido crea reservas y conserva sus cancelaciones. python scripts/verificar_reservas_postman.py prepara un entorno temporal automaticamente."
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "viaje_id",
+      "value": ""
+    },
+    {
+      "key": "token_conductor",
+      "value": ""
+    },
+    {
+      "key": "token_pasajero",
+      "value": ""
+    },
+    {
+      "key": "token_otro",
+      "value": ""
+    },
+    {
+      "key": "token_soporte",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Sin autenticacion",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reservas/",
+        "header": [],
+        "description": "HTTP esperado 401. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Conductor no reserva su viaje",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/reservas/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "HTTP esperado 400. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"cupos\": 1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Soporte no crea reservas",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/reservas/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "HTTP esperado 403. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_soporte}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"cupos\": 1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Reservar dos cupos",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/reservas/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "HTTP esperado 201. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"cupos\": 2}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "pm.collectionVariables.set(\"reserva_id\", pm.response.json().id);",
+              "pm.collectionVariables.set(\"pasajero_id\", pm.response.json().pasajero);",
+              "}",
+              "pm.test(\"monto_simulado\", () => pm.expect(pm.response.json().monto_simulado).to.eql(\"6000.00\"));",
+              "pm.test(\"cupos\", () => pm.expect(pm.response.json().cupos).to.eql(2));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Rechazar duplicado",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/reservas/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "HTTP esperado 409. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"cupos\": 1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Consultar reserva",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [],
+        "description": "HTTP esperado 200. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"estado\", () => pm.expect(pm.response.json().estado).to.eql(\"confirmada\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Filtros combinados",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reservas/?viaje={{viaje_id}}&estado=confirmada&pasajero={{pasajero_id}}",
+        "header": [],
+        "description": "HTTP esperado 200. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"total_registros\", () => pm.expect(pm.response.json().total_registros).to.eql(1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Cambiar a tres cupos",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "HTTP esperado 200. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"cupos\": 3}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"cupos\", () => pm.expect(pm.response.json().cupos).to.eql(3));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Viaje conserva un cupo",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/viajes/{{viaje_id}}/",
+        "header": [],
+        "description": "HTTP esperado 200. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"cupos_disponibles\", () => pm.expect(pm.response.json().cupos_disponibles).to.eql(1));",
+              "pm.test(\"estado\", () => pm.expect(pm.response.json().estado).to.eql(\"publicado\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 Rechazar sobreventa",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/reservas/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "HTTP esperado 409. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_otro}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"cupos\": 3}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 No consultar reserva ajena",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [],
+        "description": "HTTP esperado 403. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_otro}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 Soporte no modifica",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "HTTP esperado 403. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_soporte}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"cupos\": 2}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 Cero cupos invalido",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "HTTP esperado 400. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"cupos\": 0}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 Soporte consulta",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reservas/?viaje={{viaje_id}}",
+        "header": [],
+        "description": "HTTP esperado 200. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_soporte}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"total_registros\", () => pm.expect(pm.response.json().total_registros).to.eql(1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 PUT a un cupo",
+      "request": {
+        "method": "PUT",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "HTTP esperado 200. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"cupos\": 1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"cupos\", () => pm.expect(pm.response.json().cupos).to.eql(1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16 Otro reserva tres cupos",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/reservas/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "HTTP esperado 201. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_otro}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"cupos\": 3}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "pm.collectionVariables.set(\"otra_reserva_id\", pm.response.json().id);",
+              "}",
+              "pm.test(\"monto_simulado\", () => pm.expect(pm.response.json().monto_simulado).to.eql(\"4500.00\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17 Reparto de primera reserva",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [],
+        "description": "HTTP esperado 200. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"monto_simulado\", () => pm.expect(pm.response.json().monto_simulado).to.eql(\"1500.00\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18 Viaje lleno",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/viajes/{{viaje_id}}/",
+        "header": [],
+        "description": "HTTP esperado 200. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"cupos_disponibles\", () => pm.expect(pm.response.json().cupos_disponibles).to.eql(0));",
+              "pm.test(\"estado\", () => pm.expect(pm.response.json().estado).to.eql(\"lleno\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19 No ampliar sin cupos",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "HTTP esperado 409. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"cupos\": 2}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "20 Cancelar reserva del otro pasajero",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/reservas/{{otra_reserva_id}}/",
+        "header": [],
+        "description": "HTTP esperado 204. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_otro}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "21 Monto recalculado",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [],
+        "description": "HTTP esperado 200. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"monto_simulado\", () => pm.expect(pm.response.json().monto_simulado).to.eql(\"6000.00\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "22 Viaje vuelve a publicado",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/viajes/{{viaje_id}}/",
+        "header": [],
+        "description": "HTTP esperado 200. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"cupos_disponibles\", () => pm.expect(pm.response.json().cupos_disponibles).to.eql(3));",
+              "pm.test(\"estado\", () => pm.expect(pm.response.json().estado).to.eql(\"publicado\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "23 Cancelar reserva propia",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [],
+        "description": "HTTP esperado 204. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "24 Repetir cancelacion",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [],
+        "description": "HTTP esperado 204. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "25 Historial conservado",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [],
+        "description": "HTTP esperado 200. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"estado\", () => pm.expect(pm.response.json().estado).to.eql(\"cancelada\"));",
+              "pm.test(\"monto_simulado\", () => pm.expect(pm.response.json().monto_simulado).to.eql(\"0.00\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "26 Todos los cupos libres",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/viajes/{{viaje_id}}/",
+        "header": [],
+        "description": "HTTP esperado 200. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"cupos_disponibles\", () => pm.expect(pm.response.json().cupos_disponibles).to.eql(4));",
+              "pm.test(\"estado\", () => pm.expect(pm.response.json().estado).to.eql(\"publicado\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "27 No reactivar",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "HTTP esperado 400. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"estado\": \"confirmada\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "28 Unicidad despues de cancelar",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/reservas/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "HTTP esperado 409. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"cupos\": 1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "29 Filtro invalido",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reservas/?viaje=abc",
+        "header": [],
+        "description": "HTTP esperado 400. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "30 Reserva inexistente",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reservas/999999999/",
+        "header": [],
+        "description": "HTTP esperado 404. Ejecutar en orden sobre un viaje nuevo de 4 cupos y costo 6000.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

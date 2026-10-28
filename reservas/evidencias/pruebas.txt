@@ -1,0 +1,20 @@
+Rama: feature/reservas-integracion
+Base: feature/modelos-viajes en 2eb19a0
+Codigo de integracion probado: 177c020
+Motor: MySQL
+
+Comando ejecutado: python manage.py test --noinput
+Found 44 test(s).
+System check identified no issues (0 silenced).
+Ran 44 tests in 1.976s
+OK
+
+Incluye 15 pruebas de reservas, con solicitudes simultaneas por el ultimo cupo,
+reserva duplicada simultanea y doble cancelacion simultanea.
+
+Comando ejecutado: python manage.py makemigrations --check --dry-run
+No changes detected
+
+Las comprobaciones se ejecutaron en la base temporal de Django, sin modificar los
+datos de desarrollo. Calificaciones se conserva sin cambios y no se considera
+terminado ni validado por esta evidencia.

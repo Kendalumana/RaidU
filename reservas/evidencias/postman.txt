@@ -1,0 +1,199 @@
+No authorization data found. Please use the `postman login` command.
+Refer:https://learning.postman.com/docs/postman-cli/postman-cli-options/#postman-login
+
+Running your collection...
+postman
+
+RaidU - Reservas e integracion con viajes
+
+Root 01 Sin autenticacion
+
+  GET http://127.0.0.1:49721/api/reservas/ [401 Unauthorized, 423 B, 278 ms]
+  Pass  HTTP 401
+
+Root 02 Conductor no reserva su viaje
+
+  POST http://127.0.0.1:49721/api/reservas/ [400 Bad Request, 370 B, 34 ms]
+  Pass  HTTP 400
+
+Root 03 Soporte no crea reservas
+
+  POST http://127.0.0.1:49721/api/reservas/ [403 Forbidden, 388 B, 15 ms]
+  Pass  HTTP 403
+
+Root 04 Reservar dos cupos
+
+  POST http://127.0.0.1:49721/api/reservas/ [201 Created, 454 B, 62 ms]
+  Pass  HTTP 201
+  Pass  monto_simulado
+  Pass  cupos
+
+Root 05 Rechazar duplicado
+
+  POST http://127.0.0.1:49721/api/reservas/ [409 Conflict, 387 B, 17 ms]
+  Pass  HTTP 409
+
+Root 06 Consultar reserva
+
+  GET http://127.0.0.1:49721/api/reservas/1/ [200 OK, 463 B, 24 ms]
+  Pass  HTTP 200
+  Pass  estado
+
+Root 07 Filtros combinados
+
+  GET http://127.0.0.1:49721/api/reservas/?viaje=1&estado=confirmada&pasajero=2 [200 OK, 522 B, 17 ms]
+  Pass  HTTP 200
+  Pass  total_registros
+
+Root 08 Cambiar a tres cupos
+
+  PATCH http://127.0.0.1:49721/api/reservas/1/ [200 OK, 463 B, 25 ms]
+  Pass  HTTP 200
+  Pass  cupos
+
+Root 09 Viaje conserva un cupo
+
+  GET http://127.0.0.1:49721/api/viajes/1/ [200 OK, 587 B, 11 ms]
+  Pass  HTTP 200
+  Pass  cupos_disponibles
+  Pass  estado
+
+Root 10 Rechazar sobreventa
+
+  POST http://127.0.0.1:49721/api/reservas/ [409 Conflict, 371 B, 18 ms]
+  Pass  HTTP 409
+
+Root 11 No consultar reserva ajena
+
+  GET http://127.0.0.1:49721/api/reservas/1/ [403 Forbidden, 406 B, 12 ms]
+  Pass  HTTP 403
+
+Root 12 Soporte no modifica
+
+  PATCH http://127.0.0.1:49721/api/reservas/1/ [403 Forbidden, 402 B, 12 ms]
+  Pass  HTTP 403
+
+Root 13 Cero cupos invalido
+
+  PATCH http://127.0.0.1:49721/api/reservas/1/ [400 Bad Request, 402 B, 14 ms]
+  Pass  HTTP 400
+
+Root 14 Soporte consulta
+
+  GET http://127.0.0.1:49721/api/reservas/?viaje=1 [200 OK, 522 B, 15 ms]
+  Pass  HTTP 200
+  Pass  total_registros
+
+Root 15 PUT a un cupo
+
+  PUT http://127.0.0.1:49721/api/reservas/1/ [200 OK, 463 B, 24 ms]
+  Pass  HTTP 200
+  Pass  cupos
+
+Root 16 Otro reserva tres cupos
+
+  POST http://127.0.0.1:49721/api/reservas/ [201 Created, 454 B, 21 ms]
+  Pass  HTTP 201
+  Pass  monto_simulado
+
+Root 17 Reparto de primera reserva
+
+  GET http://127.0.0.1:49721/api/reservas/1/ [200 OK, 463 B, 12 ms]
+  Pass  HTTP 200
+  Pass  monto_simulado
+
+Root 18 Viaje lleno
+
+  GET http://127.0.0.1:49721/api/viajes/1/ [200 OK, 583 B, 10 ms]
+  Pass  HTTP 200
+  Pass  cupos_disponibles
+  Pass  estado
+
+Root 19 No ampliar sin cupos
+
+  PATCH http://127.0.0.1:49721/api/reservas/1/ [409 Conflict, 385 B, 15 ms]
+  Pass  HTTP 409
+
+Root 20 Cancelar reserva del otro pasajero
+
+  DELETE http://127.0.0.1:49721/api/reservas/2/ [204 No Content, 304 B, 22 ms]
+  Pass  HTTP 204
+
+Root 21 Monto recalculado
+
+  GET http://127.0.0.1:49721/api/reservas/1/ [200 OK, 463 B, 12 ms]
+  Pass  HTTP 200
+  Pass  monto_simulado
+
+Root 22 Viaje vuelve a publicado
+
+  GET http://127.0.0.1:49721/api/viajes/1/ [200 OK, 587 B, 12 ms]
+  Pass  HTTP 200
+  Pass  cupos_disponibles
+  Pass  estado
+
+Root 23 Cancelar reserva propia
+
+  DELETE http://127.0.0.1:49721/api/reservas/1/ [204 No Content, 304 B, 25 ms]
+  Pass  HTTP 204
+
+Root 24 Repetir cancelacion
+
+  DELETE http://127.0.0.1:49721/api/reservas/1/ [204 No Content, 304 B, 12 ms]
+  Pass  HTTP 204
+
+Root 25 Historial conservado
+
+  GET http://127.0.0.1:49721/api/reservas/1/ [200 OK, 459 B, 12 ms]
+  Pass  HTTP 200
+  Pass  estado
+  Pass  monto_simulado
+
+Root 26 Todos los cupos libres
+
+  GET http://127.0.0.1:49721/api/viajes/1/ [200 OK, 587 B, 10 ms]
+  Pass  HTTP 200
+  Pass  cupos_disponibles
+  Pass  estado
+
+Root 27 No reactivar
+
+  PATCH http://127.0.0.1:49721/api/reservas/1/ [400 Bad Request, 408 B, 15 ms]
+  Pass  HTTP 400
+
+Root 28 Unicidad despues de cancelar
+
+  POST http://127.0.0.1:49721/api/reservas/ [409 Conflict, 387 B, 14 ms]
+  Pass  HTTP 409
+
+Root 29 Filtro invalido
+
+  GET http://127.0.0.1:49721/api/reservas/?viaje=abc [400 Bad Request, 377 B, 9 ms]
+  Pass  HTTP 400
+
+Root 30 Reserva inexistente
+
+  GET http://127.0.0.1:49721/api/reservas/999999999/ [404 Not Found, 384 B, 10 ms]
+  Pass  HTTP 404
+
+----------------------------------------------------------------------
+|                         |            executed |             failed |
+--------------------------+---------------------+---------------------
+|              iterations |                   1 |                  0 |
+--------------------------+---------------------+---------------------
+|                requests |                  30 |                  0 |
+--------------------------+---------------------+---------------------
+|            test-scripts |                  30 |                  0 |
+--------------------------+---------------------+---------------------
+|      prerequest-scripts |                   0 |                  0 |
+--------------------------+---------------------+---------------------
+|              assertions |                  50 |                  0 |
+----------------------------------------------------------------------
+| total run duration: 2.9 s                                          |
+----------------------------------------------------------------------
+| total data received: 3.2 KB (approx)                               |
+----------------------------------------------------------------------
+| average response time: 26 ms [min: 9 ms, max: 278 ms, s.d.: 47 ms] |
+----------------------------------------------------------------------
+Postman credentials are required for publishing run details to Postman cloud.
+Please specify it by using the `postman login` command

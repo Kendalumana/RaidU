@@ -30,12 +30,13 @@ ocupados o relaciones protegidas devuelve 409.
 
 ## Contrato para integrar reservas
 
-Esta rama no agrega ni depende de la aplicación de reservas. Viaje conserva la
-ocupación como `cupos_totales - cupos_disponibles`, dentro de una transacción
-con bloqueo de su fila al modificar o eliminar. La integración de reservas debe
-usar ese mismo bloqueo al reservar/cancelar y mantener ambos valores consistentes.
-La cancelación del viaje y el recálculo de montos de reservas se conectan al integrar
-ese módulo; no se implementan aquí ni se modifica calificaciones.
+Esta rama integra reservas. Las escrituras de ambos módulos bloquean primero la
+fila del viaje dentro de una transacción. Al modificar capacidad, los cupos
+ocupados se consultan desde las reservas confirmadas y los disponibles conservan
+la relación `cupos_totales - cupos_ocupados`.
+Cancelar el viaje cancela sus reservas y deja sus montos en cero. Cambiar el costo
+recalcula sus montos. El historial de reservas protege el borrado del viaje.
+Calificaciones se conserva sin cambios para que su responsable lo termine.
 
 ## Pruebas
 

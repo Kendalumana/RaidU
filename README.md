@@ -65,7 +65,8 @@ El servidor estará disponible en:
 
 El backend incluye la estructura de Django, la configuración de MySQL, autenticación por tokens, registro y perfil de usuarios, y CRUD de vehículos con permisos, búsqueda y paginación.
 
-Las funciones de viajes, reservas y calificaciones siguen pendientes.
+Esta rama incluye viajes y reservas integrados. Calificaciones continúa en desarrollo.
+Las reglas, rutas y pruebas del módulo están en [la guía de reservas](reservas/README.md).
 
 **Nota:** Los pagos serán simulados. La plataforma calculará cuánto corresponde pagar a cada pasajero, pero no realizará cobros reales.
 

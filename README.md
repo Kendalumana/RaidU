@@ -174,5 +174,106 @@ Pruebas específicas, incluyendo solicitudes simultáneas contra MySQL:
 python manage.py test reservas --noinput
 ```
 
-Los casos adicionales de Postman para la baja de usuarios y el borrado protegido
-se describen en [docs/pruebas-baja-usuarios.md](docs/pruebas-baja-usuarios.md).
+El recorrido completo de Postman incluye la baja de usuarios y el borrado protegido.
+
+## Preparar MySQL desde cero
+
+Requisitos: Python 3.14 (versión usada en la verificación), MySQL 8.0 o superior,
+Git y Postman CLI para el recorrido automático. Instalar dependencias desde
+`requirements.txt`; `mysqlclient` puede requerir herramientas de compilación si
+no hay una rueda disponible para la versión de Python o el sistema operativo.
+
+Con una cuenta administradora de MySQL, reemplazar la clave de ejemplo:
+
+```sql
+CREATE DATABASE raidu_db CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE USER 'raidu_user'@'localhost' IDENTIFIED BY 'CAMBIAR_CLAVE_LOCAL';
+GRANT ALL PRIVILEGES ON raidu_db.* TO 'raidu_user'@'localhost';
+GRANT ALL PRIVILEGES ON test_raidu_db.* TO 'raidu_user'@'localhost';
+```
+
+La aplicación usa `raidu_db`. Django y la verificación de Postman crean y eliminan
+`test_raidu_db`; no guardar datos manuales en esa base ni ejecutar ambas verificaciones
+al mismo tiempo. El recorrido de Postman se detiene si la base temporal ya existe.
+No necesita permisos para crear otras bases.
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Editar `.env` con las credenciales de la computadora y una `SECRET_KEY` local.
+Mantener ese archivo fuera de Git. Después de migrar, crear un administrador local:
+
+```powershell
+python manage.py createsuperuser
+```
+
+## Viajes y calificaciones
+
+Todos los endpoints de negocio requieren token.
+
+| Recurso | Métodos y rutas | Consulta |
+| --- | --- | --- |
+| Viajes | GET/POST `/api/viajes/`; GET/PUT/PATCH/DELETE `/api/viajes/<id>/` | `sede_origen`, `sede_destino`, `fecha` (AAAA-MM-DD), `estado`, `cupos_minimos`, `ordering` |
+| Calificaciones | GET/POST `/api/calificaciones/`; GET/PUT/PATCH/DELETE `/api/calificaciones/<id>/` | `viaje`, `calificador`, `calificado`, `puntaje`, `ordering` |
+| Promedio | GET `/api/calificaciones/promedio/<usuario_id>/` | Devuelve promedio y cantidad; sin calificaciones el promedio es `null`. |
+
+Viajes ordena por `fecha_hora`, `-fecha_hora`, `costo_total` o `-costo_total`.
+Calificaciones ordena por `fecha`, `-fecha`, `puntaje` o `-puntaje`.
+Ambos listados usan la misma paginación que reservas. Un filtro reconocido con valor
+inválido devuelve 400 con el nombre del campo; los parámetros desconocidos se ignoran.
+
+Un viaje nuevo comienza `publicado`. Reservas cambia automáticamente entre `publicado`
+y `lleno` según cupos. El conductor o administrador puede pasar a `en_curso` y después
+a `finalizado`, o cancelar un viaje publicado/lleno. No se modifican viajes finalizados
+o cancelados. Las cuatro sedes son `rodrigo_facio`, `san_ramon`, `esparza`, `puntarenas`;
+los detalles de encuentro son texto opcional y no hay un CRUD de lugares separado.
+
+Calificaciones exige viaje finalizado, participación confirmada de ambos usuarios,
+puntaje entre 1 y 5 y una calificación por pareja y viaje. El autor o administrador
+puede corregir/eliminar una calificación; Soporte solo consulta.
+
+## Datos ficticios y Postman
+
+Para una demostración manual en una base de desarrollo, elegir una clave local fuerte:
+
+```powershell
+$env:DEMO_PASSWORD = Read-Host 'Clave local para las cuentas de demostración'
+python manage.py cargar_demo
+python manage.py runserver
+```
+
+`cargar_demo` crea o actualiza cinco cuentas `demo_conductor@ucr.ac.cr`,
+`demo_pasajero@ucr.ac.cr`, `demo_otro@ucr.ac.cr`, `demo_soporte@ucr.ac.cr` y
+`demo_admin@ucr.ac.cr`, con la clave indicada. Las cuentas son ficticias; Soporte
+pertenece al grupo correspondiente y admin tiene `is_staff=True`.
+Repetir el comando conserva cinco cuentas y actualiza su clave; usar solo en un entorno local.
+
+Importar [la colección completa](postman/Cierre_RaidU.postman_collection.json) en Postman
+y configurar `base_url` y `demo_password` en un entorno privado. Ejecutar las **56
+solicitudes en orden**: la colección obtiene los tokens, crea vehículos/viajes/reservas,
+califica y prueba permisos, filtros y baja de cuentas. No versionar el entorno privado.
+
+Para ejecutar todo con MySQL temporal y una clave generada automáticamente:
+
+```powershell
+python scripts/verificar_postman.py
+```
+
+El script aplica migraciones desde cero, carga cuentas ficticias, inicia un servidor
+local y ejecuta Postman CLI. Desactiva el envío de eventos del recorrido y elimina
+la base temporal al finalizar. Guarda una evidencia de salida sin claves ni tokens.
+La base de desarrollo no se modifica. La colección de 16 solicitudes de reservas
+permanece disponible para pruebas manuales específicas.
+
+## Evidencia y revisión
+
+- [Documento técnico y diagrama ER](docs/documento-tecnico.md).
+- [Resultado de pruebas automatizadas](docs/evidencia-pruebas.txt).
+- [Resultado de Postman](docs/evidencia-postman.txt).
+- [Instalación limpia y cierre](docs/verificacion-entrega.md).
+- [Guía para revisión cruzada](docs/revision-cruzada.md).
+
+Limitaciones: backend sin frontend, pago simulado, sin notificaciones ni cobros reales.
+Las reservas canceladas no se reactivan y solo se identifica al titular de cada reserva.
+La aprobación cruzada y la fusión a `main` corresponden al equipo.

@@ -1,0 +1,2623 @@
+{
+  "info": {
+    "name": "RaidU - Cierre de los cinco modulos",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Ejecutar cargar_demo con DEMO_PASSWORD; configurar base_url y demo_password en un entorno privado. Ejecutar en orden en una base de demostracion. Se crean y modifican datos ficticios. Para una verificacion aislada ejecutar python scripts/verificar_postman.py."
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "demo_password",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Anonimo requiere token",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/viajes/",
+        "header": [],
+        "description": "Respuesta esperada: 401. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set(\"run_id\", Date.now().toString());",
+              "pm.collectionVariables.set(\"placa\", \"C\" + Date.now().toString().slice(-8));",
+              "pm.collectionVariables.set(\"placa_libre\", \"U\" + Date.now().toString().slice(-8));",
+              "pm.collectionVariables.set(\"fecha_futura\", new Date(Date.now()+86400000).toISOString());"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Rechazar correo externo",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/usuarios/registro/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 400. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"demo@example.com\", \"password\": \"{{demo_password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Registrar cuenta ficticia",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/usuarios/registro/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 201. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"prueba_{{run_id}}@ucr.ac.cr\", \"password\": \"{{demo_password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set(\"token_extra\", pm.response.json().token);",
+              "  pm.collectionVariables.set(\"extra_id\", pm.response.json().usuario.id);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Token conductor",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/token/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\": \"demo_conductor@ucr.ac.cr\", \"password\": \"{{demo_password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  pm.collectionVariables.set(\"token_conductor\", pm.response.json().token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Token pasajero",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/token/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\": \"demo_pasajero@ucr.ac.cr\", \"password\": \"{{demo_password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  pm.collectionVariables.set(\"token_pasajero\", pm.response.json().token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Token otro",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/token/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\": \"demo_otro@ucr.ac.cr\", \"password\": \"{{demo_password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  pm.collectionVariables.set(\"token_otro\", pm.response.json().token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Token admin",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/token/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\": \"demo_admin@ucr.ac.cr\", \"password\": \"{{demo_password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  pm.collectionVariables.set(\"token_admin\", pm.response.json().token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Token soporte",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/token/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\": \"demo_soporte@ucr.ac.cr\", \"password\": \"{{demo_password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  pm.collectionVariables.set(\"token_soporte\", pm.response.json().token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Perfil conductor",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/perfil/",
+        "header": [],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  pm.collectionVariables.set(\"conductor_id\", pm.response.json().id);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 Soporte consulta usuarios",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/usuarios/",
+        "header": [],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_soporte}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Usuario no lista cuentas",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/usuarios/",
+        "header": [],
+        "description": "Respuesta esperada: 403. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 Crear vehiculo",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/vehiculos/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 201. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"placa\": \"{{placa}}\", \"marca\": \"Demo\", \"modelo\": \"Prueba\", \"capacidad\": 4}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set(\"vehiculo_id\", pm.response.json().id);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 Buscar vehiculo",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/vehiculos/?search={{placa}}",
+        "header": [],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().count).to.eql(1); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 Vehiculo ajeno protegido",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/vehiculos/{{vehiculo_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 403. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_otro}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"marca\": \"Otra\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 Capacidad invalida",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/vehiculos/{{vehiculo_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 400. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"capacidad\": 0}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16 Crear vehiculo sin viajes",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/vehiculos/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 201. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"placa\": \"{{placa_libre}}\", \"marca\": \"Demo\", \"modelo\": \"Prueba\", \"capacidad\": 4}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set(\"vehiculo_libre_id\", pm.response.json().id);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17 Eliminar vehiculo sin viajes",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/vehiculos/{{vehiculo_libre_id}}/",
+        "header": [],
+        "description": "Respuesta esperada: 204. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18 Rechazar viaje inicialmente finalizado",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/viajes/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 400. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"vehiculo\": \"{{vehiculo_id}}\", \"sede_origen\": \"puntarenas\", \"sede_destino\": \"esparza\", \"fecha_hora\": \"{{fecha_futura}}\", \"cupos_totales\": 4, \"costo_total\": \"6000.00\", \"estado\": \"finalizado\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19 Publicar viaje",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/viajes/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 201. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"vehiculo\": \"{{vehiculo_id}}\", \"sede_origen\": \"puntarenas\", \"sede_destino\": \"esparza\", \"fecha_hora\": \"{{fecha_futura}}\", \"cupos_totales\": 4, \"costo_total\": \"6000.00\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set(\"viaje_id\", pm.response.json().id);",
+              "}",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().estado).to.eql(\"publicado\"); });",
+              "pm.test(\"Contenido 2\", () => { pm.expect(pm.response.json().cupos_disponibles).to.eql(4); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "20 Filtro de cupos invalido",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/viajes/?cupos_minimos=abc",
+        "header": [],
+        "description": "Respuesta esperada: 400. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "21 Filtrar viajes combinados",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/viajes/?sede_origen=puntarenas&sede_destino=esparza&estado=publicado&ordering=-fecha_hora",
+        "header": [],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "22 Viaje ajeno protegido",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/viajes/{{viaje_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 403. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_otro}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"costo_total\": \"5000.00\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "23 Conductor no reserva viaje propio",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/reservas/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 400. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"cupos\": 1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "24 Reservar dos cupos",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/reservas/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 201. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"cupos\": 2}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set(\"reserva_id\", pm.response.json().id);",
+              "  pm.collectionVariables.set(\"pasajero_id\", pm.response.json().pasajero);",
+              "}",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().monto_simulado).to.eql(\"6000.00\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "25 Rechazar reserva duplicada",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/reservas/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 409. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"cupos\": 1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "26 Rechazar sobreventa",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/reservas/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 409. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_otro}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"cupos\": 3}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "27 Ocupar ultimos cupos",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/reservas/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 201. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_otro}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"cupos\": 2}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set(\"reserva_otro_id\", pm.response.json().id);",
+              "}",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().monto_simulado).to.eql(\"3000.00\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "28 Viaje lleno",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/viajes/{{viaje_id}}/",
+        "header": [],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().estado).to.eql(\"lleno\"); });",
+              "pm.test(\"Contenido 2\", () => { pm.expect(pm.response.json().cupos_disponibles).to.eql(0); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "29 Proteger capacidad ocupada",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/viajes/{{viaje_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 400. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"cupos_totales\": 3}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "30 Soporte no modifica reservas",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 403. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_soporte}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"cupos\": 1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "31 Reserva ajena protegida",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [],
+        "description": "Respuesta esperada: 403. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_otro}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "32 Filtrar reservas",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reservas/?viaje={{viaje_id}}&estado=confirmada&pasajero={{pasajero_id}}",
+        "header": [],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_soporte}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().total_registros).to.eql(1); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "33 Modificar cupos",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"cupos\": 1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().monto_simulado).to.eql(\"2000.00\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "34 Cancelar reserva",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/reservas/{{reserva_otro_id}}/",
+        "header": [],
+        "description": "Respuesta esperada: 204. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_otro}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "35 Repetir cancelacion",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/reservas/{{reserva_otro_id}}/",
+        "header": [],
+        "description": "Respuesta esperada: 204. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_otro}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "36 Recalcular monto restante",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reservas/{{reserva_id}}/",
+        "header": [],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().monto_simulado).to.eql(\"6000.00\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "37 Borrado protegido de vehiculo",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/vehiculos/{{vehiculo_id}}/",
+        "header": [],
+        "description": "Respuesta esperada: 409. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "38 Borrado protegido de viaje",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/viajes/{{viaje_id}}/",
+        "header": [],
+        "description": "Respuesta esperada: 409. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "39 No calificar antes del cierre",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/calificaciones/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 400. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"calificado\": \"{{conductor_id}}\", \"puntaje\": 5}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "40 Iniciar viaje",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/viajes/{{viaje_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"estado\": \"en_curso\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "41 Finalizar viaje",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/viajes/{{viaje_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"estado\": \"finalizado\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "42 Calificar conductor",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/calificaciones/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 201. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"calificado\": \"{{conductor_id}}\", \"puntaje\": 5}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  pm.collectionVariables.set(\"calificacion_id\", pm.response.json().id);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "43 Rechazar calificacion duplicada",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/calificaciones/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 400. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"calificado\": \"{{conductor_id}}\", \"puntaje\": 5}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "44 Rechazar puntaje fuera de rango",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/calificaciones/{{calificacion_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 400. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"puntaje\": 6}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "45 Rechazar autocalificacion",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/calificaciones/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 400. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"calificado\": \"{{pasajero_id}}\", \"puntaje\": 5}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "46 Pasajero cancelado no califica",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/calificaciones/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 400. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_otro}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"calificado\": \"{{conductor_id}}\", \"puntaje\": 5}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "47 Promedio del conductor",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/calificaciones/promedio/{{conductor_id}}/",
+        "header": [],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().promedio).to.eql(5); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "48 Filtrar calificaciones",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/calificaciones/?viaje={{viaje_id}}&puntaje=5&ordering=-fecha",
+        "header": [],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().total_registros).to.eql(1); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "49 Puntaje de filtro invalido",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/calificaciones/?puntaje=abc",
+        "header": [],
+        "description": "Respuesta esperada: 400. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "50 Soporte no elimina calificaciones",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/calificaciones/{{calificacion_id}}/",
+        "header": [],
+        "description": "Respuesta esperada: 403. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_soporte}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "51 Autor actualiza puntaje",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/calificaciones/{{calificacion_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"puntaje\": 4}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "52 Promedio actualizado",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/calificaciones/promedio/{{conductor_id}}/",
+        "header": [],
+        "description": "Respuesta esperada: 200. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().promedio).to.eql(4); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "53 Administrador elimina calificacion",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/calificaciones/{{calificacion_id}}/",
+        "header": [],
+        "description": "Respuesta esperada: 204. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_admin}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "54 Baja de cuenta propia",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/usuarios/{{extra_id}}/",
+        "header": [],
+        "description": "Respuesta esperada: 204. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_extra}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "55 Token revocado despues de baja",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/perfil/",
+        "header": [],
+        "description": "Respuesta esperada: 401. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_extra}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "56 Detalle inexistente",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/viajes/999999999/",
+        "header": [],
+        "description": "Respuesta esperada: 404. Ejecutar en orden; requiere cargar_demo.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

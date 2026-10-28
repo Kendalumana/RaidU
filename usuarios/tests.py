@@ -1,5 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.core.management import call_command
+from django.core.management.base import CommandError
+from io import StringIO
+from unittest.mock import patch
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
@@ -261,3 +265,27 @@ class RolesEntreModulosTests(APITestCase):
                     # Soporte debe ser rechazado antes de validar los datos (403).
                     esperado = 403 if soporte and not administrador else 400
                     self.assertEqual(self.client.post(url, {}, format='json').status_code, esperado)
+
+
+class DatosDemoTests(APITestCase):
+    def test_demo_exige_clave_explicita(self):
+        with patch.dict('os.environ', {'DEMO_PASSWORD': ''}):
+            with self.assertRaises(CommandError):
+                call_command('cargar_demo', stdout=StringIO())
+        self.assertEqual(get_user_model().objects.count(), 0)
+
+    def test_demo_repetible_y_roles_correctos(self):
+        clave = 'DemoLocal!Prueba2026'
+        salida = StringIO()
+        with patch.dict('os.environ', {'DEMO_PASSWORD': clave}):
+            call_command('cargar_demo', stdout=salida)
+            call_command('cargar_demo', stdout=salida)
+        self.assertEqual(get_user_model().objects.count(), 5)
+        self.assertEqual(PerfilUsuario.objects.count(), 5)
+        admin = get_user_model().objects.get(username='demo_admin@ucr.ac.cr')
+        soporte = get_user_model().objects.get(username='demo_soporte@ucr.ac.cr')
+        self.assertTrue(admin.is_staff)
+        self.assertTrue(soporte.groups.filter(name='Soporte').exists())
+        self.assertFalse(soporte.is_staff)
+        self.assertTrue(admin.check_password(clave))
+        self.assertNotIn(clave, salida.getvalue())

@@ -7,6 +7,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import PerfilUsuario
+from .permisos import es_soporte
 from .serializers import PerfilSerializer, RegistroSerializer, UsuarioSerializer
 
 
@@ -38,7 +39,7 @@ def perfil_api(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def usuarios_api(request):
-    if not request.user.is_staff and not request.user.groups.filter(name='Soporte').exists():
+    if not request.user.is_staff and not es_soporte(request.user):
         return Response({'detail': 'Se requiere administrador o soporte.'}, status=status.HTTP_403_FORBIDDEN)
     usuarios = get_user_model().objects.select_related('perfil').order_by('id')
     paginator = Paginator(usuarios, 10)

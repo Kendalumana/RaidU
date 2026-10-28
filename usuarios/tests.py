@@ -58,3 +58,27 @@ class UsuariosPaginacionTests(APITestCase):
         self.client.force_authenticate(user=None)
         respuesta = self.client.get('/api/usuarios/')
         self.assertEqual(respuesta.status_code, 401)
+
+
+class RolesEntreModulosTests(APITestCase):
+    def test_soporte_solo_lectura_y_prioridad_de_administrador(self):
+        grupo = Group.objects.create(name='Soporte')
+        for nombre, administrador, soporte in [
+            ('regular', False, False), ('soporte', False, True),
+            ('admin', True, False), ('admin_soporte', True, True),
+        ]:
+            usuario = get_user_model().objects.create_user(username=nombre, is_staff=administrador)
+            if soporte:
+                usuario.groups.add(grupo)
+            self.client.force_authenticate(usuario)
+            with self.subTest(rol=nombre, modulo='usuarios'):
+                esperado = 200 if administrador or soporte else 403
+                self.assertEqual(self.client.get('/api/usuarios/').status_code, esperado)
+            for modulo in ['vehiculos', 'viajes', 'reservas', 'calificaciones']:
+                with self.subTest(rol=nombre, modulo=modulo):
+                    url = f'/api/{modulo}/'
+                    self.assertEqual(self.client.get(url).status_code, 200)
+                    # Sin campos obligatorios, una escritura permitida llega a validacion (400).
+                    # Soporte debe ser rechazado antes de validar los datos (403).
+                    esperado = 403 if soporte and not administrador else 400
+                    self.assertEqual(self.client.post(url, {}, format='json').status_code, esperado)

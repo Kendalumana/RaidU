@@ -4,14 +4,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 
+from usuarios.permisos import es_soporte
 from viajes.views import respuesta_paginada
 from .models import Reserva
 from .serializers import ReservaSerializer
 from .services import guardar_reserva
-
-
-def es_soporte(usuario):
-    return usuario.groups.filter(name='Soporte').exists() and not usuario.is_staff
 
 
 @api_view(['GET', 'POST'])

@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from usuarios.permisos import es_soporte
 from .models import Calificacion
 from .serializers import CalificacionSerializer
 
@@ -82,9 +83,7 @@ def calificaciones_api(request):
 
     if request.method == 'POST':
 
-        if request.user.groups.filter(
-            name='Soporte'
-        ).exists() and not request.user.is_staff:
+        if es_soporte(request.user):
 
             return Response(
                 {
@@ -136,9 +135,7 @@ def detalle_calificacion(request, id):
         return Response(serializer.data)
 
 
-    if request.user.groups.filter(
-        name='Soporte'
-    ).exists() and not request.user.is_staff:
+    if es_soporte(request.user):
 
         return Response(
             {

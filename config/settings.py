@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'usuarios',
     'vehiculos',
     'viajes',
+    'calificaciones',
 ]
 
 REST_FRAMEWORK = {

@@ -10,5 +10,5 @@ urlpatterns = [
     # Enrutamiento base preparado para las futuras aplicaciones del proyecto (/api/):
     path('api/viajes/', include('viajes.urls')),
     # path('api/reservas/', include('reservas.urls')),
-    # path('api/calificaciones/', include('calificaciones.urls')),
+    path('api/calificaciones/', include('calificaciones.urls')),
 ]

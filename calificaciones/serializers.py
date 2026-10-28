@@ -36,6 +36,8 @@ class CalificacionSerializer(serializers.ModelSerializer):
             if calificado is None:
                 calificado = self.instance.calificado
 
+            calificador = self.instance.calificador
+
             if 'viaje' in data:
                 if data.get('viaje').id != self.instance.viaje_id:
                     raise serializers.ValidationError({
@@ -50,28 +52,27 @@ class CalificacionSerializer(serializers.ModelSerializer):
                         'No se puede cambiar el usuario calificado.'
                     })
 
-        if viaje:
+        else:
+            if request:
+                calificador = request.user
+            else:
+                calificador = None
 
+        if viaje:
             if viaje.estado != 'finalizado':
                 raise serializers.ValidationError({
                     'viaje':
                     'Solo se pueden calificar viajes finalizados.'
                 })
 
-        if request and calificado:
-
-            if calificado.id == request.user.id:
+        if calificador and calificado:
+            if calificador.id == calificado.id:
                 raise serializers.ValidationError({
                     'calificado':
                     'Un usuario no puede calificarse a si mismo.'
                 })
 
-        if request and viaje and calificado:
-
-            if self.instance:
-                calificador = self.instance.calificador
-            else:
-                calificador = request.user
+        if calificador and viaje and calificado:
 
             calificacion = Calificacion.objects.filter(
                 viaje=viaje,
@@ -89,8 +90,5 @@ class CalificacionSerializer(serializers.ModelSerializer):
                     'detail':
                     'Ya existe una calificacion para este usuario en este viaje.'
                 })
-
-        # Cuando hagamos Reservas agregaremos aqui la validacion
-        # para comprobar que ambos usuarios participaron en el viaje.
 
         return data

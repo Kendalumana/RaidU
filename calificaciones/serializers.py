@@ -90,7 +90,13 @@ class CalificacionSerializer(serializers.ModelSerializer):
                     'Ya existe una calificacion para este usuario en este viaje.'
                 })
 
-        # Cuando hagamos Reservas agregaremos aqui la validacion
-        # para comprobar que ambos usuarios participaron en el viaje.
+        if request and viaje and calificado:
+            participantes = set(viaje.reservas.filter(estado='confirmada').values_list('pasajero_id', flat=True))
+            participantes.add(viaje.conductor_id)
+            calificador = self.instance.calificador if self.instance else request.user
+            if calificador.pk not in participantes or calificado.pk not in participantes:
+                raise serializers.ValidationError({
+                    'viaje': 'Ambos usuarios deben haber participado en el viaje.'
+                })
 
         return data

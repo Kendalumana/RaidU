@@ -1,4 +1,7 @@
 from django.core.paginator import Paginator
+from django.db import transaction
+from django.db.models import Sum
+from django.db.models.deletion import ProtectedError
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -7,6 +10,7 @@ from rest_framework.response import Response
 
 from .models import Viaje
 from .serializers import ViajeSerializer
+from reservas.services import recalcular_viaje
 
 
 def respuesta_paginada(queryset, serializer_class, page_number):
@@ -122,10 +126,14 @@ def viajes_api(request):
 
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
+@transaction.atomic
 def detalle_viaje(request, id):
 
     try:
-        viaje = Viaje.objects.get(id=id)
+        viajes = Viaje.objects.all()
+        if request.method != 'GET':
+            viajes = viajes.select_for_update()
+        viaje = viajes.get(id=id)
 
     except Viaje.DoesNotExist:
         return Response(
@@ -224,17 +232,16 @@ def detalle_viaje(request, id):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            if 'cupos_totales' in serializer.validated_data:
-                cupos_totales = serializer.validated_data.get(
-                    'cupos_totales'
-                )
-
-                serializer.save(
-                    cupos_disponibles=cupos_totales
-                )
-
-            else:
-                serializer.save()
+            ocupados = viaje.reservas.filter(estado='confirmada').aggregate(
+                total=Sum('cupos')
+            )['total'] or 0
+            cupos_totales = serializer.validated_data.get('cupos_totales', viaje.cupos_totales)
+            if cupos_totales < ocupados:
+                return Response({'detail': 'Los cupos no pueden ser menores a las reservas confirmadas.'}, status=400)
+            serializer.save(cupos_disponibles=cupos_totales - ocupados)
+            if viaje.estado == 'cancelado':
+                viaje.reservas.filter(estado='confirmada').update(estado='cancelada', monto_simulado=0)
+            recalcular_viaje(viaje)
 
             return Response(serializer.data)
 
@@ -245,7 +252,10 @@ def detalle_viaje(request, id):
 
 
     if request.method == 'DELETE':
-        viaje.delete()
+        try:
+            viaje.delete()
+        except ProtectedError:
+            return Response({'detail': 'El viaje tiene historial de reservas; cancele el viaje para conservarlo.'}, status=409)
 
         return Response(
             status=status.HTTP_204_NO_CONTENT

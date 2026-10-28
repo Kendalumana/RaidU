@@ -18,11 +18,30 @@ Las métricas del recorrido local no son una prueba de carga.
 
 ## Instalación limpia
 
-Pendiente de completar la comprobación en un clon local separado y un entorno
-virtual nuevo, instalando exclusivamente `requirements.txt`.
+Completada en un clon local separado del commit `da8d8be`, con un entorno virtual
+nuevo y Python 3.14.7. No se reutilizó el entorno virtual del desarrollo.
+
+| Paso | Resultado |
+| --- | --- |
+| Clonar la rama de cierre en otra carpeta | Aprobado |
+| Crear entorno virtual vacío | Aprobado |
+| Instalar exclusivamente `requirements.txt` | Aprobado |
+| `pip check` | Sin dependencias incompatibles |
+| `manage.py check` | Sin incidencias |
+| `makemigrations --check --dry-run` | Sin cambios |
+| Suite completa sobre MySQL temporal | 68 pruebas aprobadas |
+| Migrar desde cero y repetir Postman por HTTP | 56 solicitudes y 69 aserciones aprobadas |
+
+La conexión a MySQL se proporcionó mediante variables locales; no se copiaron ni
+versionaron credenciales en el clon. Las dos comprobaciones usaron la base temporal
+de manera secuencial y la eliminaron al terminar. El ajuste posterior de la salida
+de evidencia elimina líneas vacías finales y no cambia el comportamiento de la API.
 
 ## Cierre del equipo
 
 - Revisión cruzada humana: pendiente; ver `revision-cruzada.md`.
 - Fusión a main: pendiente de aprobación del equipo.
 - Confirmar acceso del docente y entregar el enlace en Mediación Virtual: responsabilidad del equipo.
+
+El archivo `entrega.txt` contiene el enlace del repositorio. Subirlo después de la
+aprobación cruzada y de comprobar que main incluye la versión revisada.

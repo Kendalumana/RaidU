@@ -1,0 +1,42 @@
+[
+  {
+    "paso": "01-clonar",
+    "codigo": 0,
+    "segundos": 2.2
+  },
+  {
+    "paso": "02-entorno-nuevo",
+    "codigo": 0,
+    "segundos": 6.98
+  },
+  {
+    "paso": "03-instalar-dependencias",
+    "codigo": 0,
+    "segundos": 17.8
+  },
+  {
+    "paso": "04-dependencias-consistentes",
+    "codigo": 0,
+    "segundos": 0.88
+  },
+  {
+    "paso": "05-check",
+    "codigo": 0,
+    "segundos": 1.33
+  },
+  {
+    "paso": "06-migraciones",
+    "codigo": 0,
+    "segundos": 1.45
+  },
+  {
+    "paso": "07-pruebas",
+    "codigo": 0,
+    "segundos": 17.78
+  },
+  {
+    "paso": "08-postman",
+    "codigo": 0,
+    "segundos": 21.38
+  }
+]

@@ -325,4 +325,3 @@ A new version of Postman CLI is available (v1.82.0). Refer https://go.pstmn.io/c
 To update your Postman CLI, run:
 
 postman update
-

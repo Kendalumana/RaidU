@@ -4,15 +4,17 @@ Estado: preparada para revisión humana; sin aprobación ni fusión a main.
 
 ## Ramas locales
 
-1. `integration/cierre-backend`: integra `feature/reservas-api` y
-   `origin/feature/usuarios-baja-permisos`, conservando la historia de ambas ramas.
+1. `integration/cierre-backend`: reúne el resultado final. La integración inicial
+   de reservas con baja de usuarios es el commit `552b2dc`, que conserva ambas historias.
 2. `fix/validaciones-viajes-calificaciones`: filtros tipados, estado inicial y pruebas de API.
 3. `refactor/paginacion-compartida`: mueve la función existente a `config/paginacion.py`.
 4. `docs/cierre-entrega`: recorrido completo, datos ficticios, evidencias y documentación.
 
-Las ramas están apiladas: cada una contiene la anterior. Para revisar el cierre completo,
-comparar la rama final con main; para revisar una pieza, compararla con la anterior.
-Publicar y crear PR antes de pedir aprobación al otro integrante. No fusionar sin ella.
+Las ramas conservan etapas del trabajo. Para revisar el cierre completo, comparar
+`integration/cierre-backend` con main. Para correcciones, comparar la rama fix con
+`552b2dc`; para paginación, comparar refactor con fix; para documentación y recorrido,
+comparar docs con refactor. Publicar y crear PR antes de pedir aprobación al otro
+integrante. No fusionar sin ella.
 
 ## Puntos de revisión
 

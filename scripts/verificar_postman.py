@@ -75,7 +75,7 @@ def main():
         salida = salida.replace(os.environ['DEMO_PASSWORD'], '<clave omitida>').replace(str(ROOT), '<proyecto>')
         salida = re.sub(r'\b[a-f0-9]{40}\b', '<token omitido>', salida)
         args.evidencia.parent.mkdir(parents=True, exist_ok=True)
-        args.evidencia.write_text(salida, encoding='utf-8')
+        args.evidencia.write_text(salida.rstrip() + '\n', encoding='utf-8')
         print(salida)
         return resultado.returncode
     finally:

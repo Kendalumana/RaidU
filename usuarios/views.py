@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.paginator import InvalidPage, Paginator
+from django.db import transaction
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
@@ -53,3 +54,22 @@ def usuarios_api(request):
         'total_pages': paginator.num_pages,
         'results': UsuarioSerializer(pagina.object_list, many=True).data,
     })
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def usuario_baja_api(request, pk):
+    soporte = es_soporte(request.user)
+    if not request.user.is_staff and (soporte or request.user.pk != pk):
+        return Response({'detail': 'Solo puede desactivar su propia cuenta; Soporte solo tiene lectura.'},
+                        status=status.HTTP_403_FORBIDDEN)
+
+    with transaction.atomic():
+        try:
+            usuario = get_user_model().objects.get(pk=pk)
+        except get_user_model().DoesNotExist:
+            return Response({'detail': 'Usuario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        usuario.is_active = False
+        usuario.save(update_fields=['is_active'])
+        Token.objects.filter(user=usuario).delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)

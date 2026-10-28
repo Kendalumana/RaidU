@@ -141,3 +141,23 @@ class VehiculoTests(APITestCase):
     def test_no_borrar_propietario_con_vehiculo(self):
         with self.assertRaises(ProtectedError):
             self.usuario.delete()
+
+    def test_borrar_vehiculo_con_viaje_devuelve_conflicto_y_conserva_datos(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from viajes.models import Viaje
+
+        viaje = Viaje.objects.create(
+            conductor=self.usuario, vehiculo=self.vehiculo,
+            sede_origen=Viaje.Sede.PUNTARENAS, sede_destino=Viaje.Sede.ESPARZA,
+            fecha_hora=timezone.now() + timedelta(days=1),
+            cupos_totales=4, cupos_disponibles=4, costo_total='6000.00',
+        )
+        for usuario in [self.usuario, self.admin]:
+            with self.subTest(usuario=usuario.pk):
+                self.client.force_authenticate(user=usuario)
+                respuesta = self.client.delete(self.url)
+                self.assertEqual(respuesta.status_code, 409)
+                self.assertIn('detail', respuesta.data)
+                self.assertTrue(Vehiculo.objects.filter(pk=self.vehiculo.pk).exists())
+                self.assertTrue(Viaje.objects.filter(pk=viaje.pk).exists())

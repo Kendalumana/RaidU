@@ -1,6 +1,7 @@
 from django.core.paginator import InvalidPage, Paginator
 from django.db import IntegrityError
 from django.db.models import Q
+from django.db.models.deletion import ProtectedError
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -87,5 +88,9 @@ def vehiculo_detalle_api(request, pk):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    vehiculo.delete()
+    try:
+        vehiculo.delete()
+    except ProtectedError:
+        return Response({'detail': 'No se puede eliminar un vehiculo con viajes asociados.'},
+                        status=status.HTTP_409_CONFLICT)
     return Response(status=status.HTTP_204_NO_CONTENT)

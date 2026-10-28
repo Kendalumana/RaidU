@@ -87,6 +87,15 @@ El token se obtiene con `POST /api/token/`.
 - `GET /api/usuarios/`: listado para administrador o grupo `Soporte`.
   Devuelve 10 usuarios por página; `?page=2` consulta otra página.
   La respuesta incluye `count`, `page`, `total_pages` y `results`.
+- `DELETE /api/usuarios/<id>/`: baja lógica, con respuesta 204 sin cuerpo.
+  El usuario regular puede desactivar su propia cuenta; un administrador puede
+  desactivar cualquier cuenta. `Soporte` sin permisos de administrador solo tiene
+  lectura, incluso sobre su propia baja. Los accesos no permitidos devuelven 403;
+  un ID inexistente consultado por un administrador devuelve 404.
+  Se conserva el usuario, su perfil, vehículos y viajes, y se elimina su token.
+  La cuenta inactiva no puede usar tokens ni sesiones, ni obtener un nuevo token
+  (el login devuelve 400). Un administrador puede repetir la baja con respuesta 204.
+  Esta operación representa DELETE sin destruir el historial de negocio.
 
 ### Vehículos
 
@@ -100,11 +109,16 @@ El token se obtiene con `POST /api/token/`.
   con 10 vehículos por página y los campos `count`, `page`, `total_pages` y `results`.
 - Una página inválida devuelve 404. Una solicitud protegida sin autenticación
   devuelve 401 y una operación no permitida devuelve 403.
+- El borrado de un vehículo asociado a viajes devuelve 409 con un mensaje
+  controlado y conserva tanto el vehículo como sus viajes.
 
 ### Pruebas de los módulos
 
 Desde la raíz, con el entorno virtual activo y MySQL configurado para pruebas:
 
 ```powershell
-python manage.py test usuarios vehiculos --noinput
+python manage.py test usuarios vehiculos viajes --noinput
 ```
+
+Los casos adicionales de Postman para la baja de usuarios y el borrado protegido
+se describen en [docs/pruebas-baja-usuarios.md](docs/pruebas-baja-usuarios.md).

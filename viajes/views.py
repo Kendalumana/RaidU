@@ -1,4 +1,6 @@
 from django.core.paginator import Paginator
+from django.db import transaction
+from django.db.models.deletion import ProtectedError
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -6,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Viaje
-from .serializers import ViajeSerializer
+from .serializers import ViajeSerializer, FiltrosViajeSerializer
 
 
 def respuesta_paginada(queryset, serializer_class, page_number):
@@ -27,43 +29,15 @@ def respuesta_paginada(queryset, serializer_class, page_number):
 def viajes_api(request):
 
     if request.method == 'GET':
-        viajes = Viaje.objects.all().order_by('fecha_hora')
-
-        sede_origen = request.query_params.get('sede_origen')
-        sede_destino = request.query_params.get('sede_destino')
-        fecha = request.query_params.get('fecha')
-        estado = request.query_params.get('estado')
-        cupos_minimos = request.query_params.get('cupos_minimos')
-        ordering = request.query_params.get('ordering')
-
-        if sede_origen:
-            viajes = viajes.filter(sede_origen=sede_origen)
-
-        if sede_destino:
-            viajes = viajes.filter(sede_destino=sede_destino)
-
-        if fecha:
-            viajes = viajes.filter(fecha_hora__date=fecha)
-
-        if estado:
-            viajes = viajes.filter(estado=estado)
-
-        if cupos_minimos:
-            viajes = viajes.filter(
-                cupos_disponibles__gte=cupos_minimos
-            )
-
-        if ordering == 'fecha_hora':
-            viajes = viajes.order_by('fecha_hora')
-
-        if ordering == '-fecha_hora':
-            viajes = viajes.order_by('-fecha_hora')
-
-        if ordering == 'costo_total':
-            viajes = viajes.order_by('costo_total')
-
-        if ordering == '-costo_total':
-            viajes = viajes.order_by('-costo_total')
+        filtros = FiltrosViajeSerializer(data=request.query_params)
+        filtros.is_valid(raise_exception=True)
+        datos = filtros.validated_data
+        viajes = Viaje.objects.all()
+        campos = {'sede_origen': 'sede_origen', 'sede_destino': 'sede_destino', 'fecha': 'fecha_hora__date', 'estado': 'estado', 'cupos_minimos': 'cupos_disponibles__gte'}
+        for parametro, campo in campos.items():
+            if parametro in datos:
+                viajes = viajes.filter(**{campo: datos[parametro]})
+        viajes = viajes.order_by(datos.get('ordering', 'fecha_hora'), 'id')
 
         return respuesta_paginada(
             viajes,
@@ -122,10 +96,14 @@ def viajes_api(request):
 
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
+@transaction.atomic
 def detalle_viaje(request, id):
 
     try:
-        viaje = Viaje.objects.get(id=id)
+        viajes = Viaje.objects.all()
+        if request.method != 'GET':
+            viajes = viajes.select_for_update()
+        viaje = viajes.get(id=id)
 
     except Viaje.DoesNotExist:
         return Response(
@@ -224,17 +202,13 @@ def detalle_viaje(request, id):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            if 'cupos_totales' in serializer.validated_data:
-                cupos_totales = serializer.validated_data.get(
-                    'cupos_totales'
-                )
-
-                serializer.save(
-                    cupos_disponibles=cupos_totales
-                )
-
-            else:
-                serializer.save()
+            ocupados = viaje.cupos_totales - viaje.cupos_disponibles
+            cupos_totales = serializer.validated_data.get('cupos_totales', viaje.cupos_totales)
+            disponibles = cupos_totales - ocupados
+            estado = serializer.validated_data.get('estado', viaje.estado)
+            if estado in ['publicado', 'lleno']:
+                estado = 'lleno' if disponibles == 0 else 'publicado'
+            serializer.save(cupos_disponibles=disponibles, estado=estado)
 
             return Response(serializer.data)
 
@@ -245,7 +219,12 @@ def detalle_viaje(request, id):
 
 
     if request.method == 'DELETE':
-        viaje.delete()
+        if viaje.cupos_disponibles < viaje.cupos_totales:
+            return Response({'detail': 'No se puede eliminar un viaje con cupos ocupados.'}, status=409)
+        try:
+            viaje.delete()
+        except ProtectedError:
+            return Response({'detail': 'No se puede eliminar un viaje con registros asociados.'}, status=409)
 
         return Response(
             status=status.HTTP_204_NO_CONTENT

@@ -54,6 +54,17 @@ class ViajeSerializer(serializers.ModelSerializer):
             if sede_destino is None:
                 sede_destino = self.instance.sede_destino
 
+            ocupados = self.instance.cupos_totales - self.instance.cupos_disponibles
+            disponibles = cupos_totales - ocupados
+            if disponibles < 0:
+                raise serializers.ValidationError({
+                    'cupos_totales': 'Los cupos no pueden ser menores a los cupos ya ocupados.'
+                })
+            if data.get('estado') == 'lleno' and disponibles != 0:
+                raise serializers.ValidationError({'estado': 'Un viaje lleno no puede tener cupos disponibles.'})
+            if data.get('estado') == 'publicado' and disponibles == 0:
+                raise serializers.ValidationError({'estado': 'Un viaje sin cupos disponibles debe estar lleno.'})
+
         if vehiculo and cupos_totales is not None:
 
             

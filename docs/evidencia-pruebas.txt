@@ -1,11 +1,14 @@
+Version: correccion sobre 186f9e2. Rama fix/cierre-viajes.
+Comando: python manage.py test --noinput
+Motor: MySQL, base temporal eliminada al terminar.
+
+Found 72 test(s).
+System check identified no issues (0 silenced).
 Creating test database for alias 'default'...
 
-....................................................................
+........................................................................
 ----------------------------------------------------------------------
-Ran 68 tests in 9.364s
+Ran 72 tests in 11.626s
 
 OK
 Destroying test database for alias 'default'...
-
-Found 68 test(s).
-System check identified no issues (0 silenced).

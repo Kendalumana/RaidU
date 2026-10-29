@@ -4,7 +4,7 @@ Fecha: 28 de octubre de 2026 (Costa Rica).
 
 ## Comprobaciones completadas
 
-- 68 pruebas automatizadas aprobadas en MySQL, incluyendo dos solicitudes por el
+- 72 pruebas automatizadas aprobadas en MySQL, incluyendo dos solicitudes por el
   último cupo, duplicado simultáneo y doble cancelación simultánea.
 - Postman CLI 1.73.0: 56 solicitudes y 69 aserciones, sin fallos, contra un servidor
   HTTP real local y una base temporal con migraciones desde cero.
@@ -16,7 +16,7 @@ Fecha: 28 de octubre de 2026 (Costa Rica).
 Las evidencias están en `evidencia-pruebas.txt` y `evidencia-postman.txt`.
 Las métricas del recorrido local no son una prueba de carga.
 
-## Instalación limpia
+## Instalación limpia de la versión anterior
 
 Completada en un clon local separado del commit `da8d8be`, con un entorno virtual
 nuevo y Python 3.14.7. No se reutilizó el entorno virtual del desarrollo.
@@ -40,7 +40,18 @@ de evidencia elimina líneas vacías finales y no cambia el comportamiento de la
 ## Cierre del equipo
 
 - Revisión cruzada humana: pendiente; ver `revision-cruzada.md`.
-- Fusión a main: pendiente de aprobación del equipo.
+- La integración anterior llegó a main mediante el PR #4. La corrección de edición
+  exclusiva del autor y validación de estados de viajes requiere revisión y fusión.
+- El PR #7 espera que un administrador edite una calificación ajena recibida. Ese
+  caso debe actualizarse a 403 para respetar la edición exclusiva del autor; no se
+  debe fusionar su prueba actual junto con esta regla.
+- La rama de reservas del PR #6 tiene conflictos al combinarla con main. Conservar
+  las pruebas de participación y permisos de main al resolverlos. Su destino actual
+  es feature/modelos-viajes; fusionarlo allí no actualiza main.
+- Repetir la instalación limpia sobre el commit final que se entregará. Las 72
+  pruebas y Postman actuales usaron un checkout separado y bases temporales nuevas,
+  pero reutilizaron el entorno Python local. No equivalen a instalar dependencias
+  desde cero en esa versión.
 - Confirmar acceso del docente y entregar el enlace en Mediación Virtual: responsabilidad del equipo.
 
 El archivo `entrega.txt` contiene el enlace del repositorio. Subirlo después de la

@@ -230,8 +230,9 @@ o cancelados. Las cuatro sedes son `rodrigo_facio`, `san_ramon`, `esparza`, `pun
 los detalles de encuentro son texto opcional y no hay un CRUD de lugares separado.
 
 Calificaciones exige viaje finalizado, participación confirmada de ambos usuarios,
-puntaje entre 1 y 5 y una calificación por pareja y viaje. El autor o administrador
-puede corregir/eliminar una calificación; Soporte solo consulta.
+puntaje entre 1 y 5 y una calificación por pareja y viaje. Solo el autor puede editar
+una calificación, también cuando otra cuenta es administradora. El autor o un
+administrador puede eliminarla; Soporte solo consulta.
 
 ## Datos ficticios y Postman
 

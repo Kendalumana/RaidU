@@ -101,7 +101,7 @@ def detalle_calificacion(request, id):
 
     if (
         calificacion.calificador_id != request.user.id
-        and not request.user.is_staff
+        and (request.method in ['PUT', 'PATCH'] or not request.user.is_staff)
     ):
         return Response(
             {

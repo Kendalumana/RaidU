@@ -135,7 +135,8 @@ da prioridad al administrador si también pertenece al grupo Soporte.
 | Crear/editar/cancelar reservas | Propias | No | Todas; creación para sí mismo |
 | Consultar calificaciones/promedios | Sí | Sí | Sí |
 | Crear calificaciones | Si participó | No | Si participó |
-| Editar/borrar calificaciones | Autor | No | Todas |
+| Editar calificaciones | Autor | No | Solo si es el autor |
+| Borrar calificaciones | Autor | No | Todas |
 
 ## Transacciones y reparto
 
@@ -193,8 +194,8 @@ documentados; no se cambian respuestas existentes al centralizar la función com
 Se usan cuatro sedes enumeradas y detalles opcionales, sin modelo Lugar. El estado
 inicial se controla en API y los cambios posteriores siguen las transiciones del
 módulo de viajes. Se conserva la edición/borrado de calificaciones del módulo
-existente para corregir valoraciones, con permiso del autor o administrador; difiere
-del borrador inicial que proponía omitir esas operaciones.
+existente para corregir valoraciones por su autor y eliminarlas por su autor o un
+administrador; difiere del borrador inicial que proponía omitir esas operaciones.
 
 Las cuentas se desactivan, las reservas se cancelan y los pagos son simulados.
 Los acompañantes de una reserva no se identifican individualmente; solo su titular

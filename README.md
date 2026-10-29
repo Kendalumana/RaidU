@@ -295,6 +295,7 @@ permanece disponible para pruebas manuales específicas.
 ## Evidencia y revisión
 
 - [Documento técnico y diagrama ER](docs/documento-tecnico.md).
+- [Documento técnico actualizado en Word](docs/Documento_tecnico_RaidU_actualizado.docx).
 - [Resultado de pruebas automatizadas](docs/evidencia-pruebas.txt).
 - [Resultado de Postman](docs/evidencia-postman.txt).
 - [Instalación limpia y cierre](docs/verificacion-entrega.md).

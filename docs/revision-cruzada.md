@@ -1,8 +1,40 @@
-# Revisión cruzada pendiente
+# Registro de revisión cruzada
 
-Estado: preparada para revisión humana; sin aprobación ni fusión a main.
+Estado: integración a main realizada. Hay un comentario de revisión asistida de
+Kendalumana; falta registrar la revisión personal de ambos integrantes.
 
-## Ramas locales
+## Comentario registrado
+
+- Autor en GitHub: Kendalumana.
+- Fecha: 29 de octubre de 2026, 09:32 (Costa Rica).
+- Enlace permanente: https://github.com/Kendalumana/RaidU/pull/4#issuecomment-6501021550
+- Versión local examinada durante la revisión asistida: `952c21c`.
+- Alcance: lectura de validaciones de viajes, participación y permisos de
+  calificaciones, y transacción, cupos y recálculo de reservas.
+- No se ejecutaron nuevas pruebas durante esa revisión asistida. El comentario
+  publicado no identifica el commit ni indica una aprobación formal.
+- Esta entrada enlaza la observación publicada; no acredita por sí sola la revisión
+  personal de ambos integrantes ni una aprobación anterior a la fusión.
+
+## Ejecución local informada por Kendalumana
+
+El 29 de octubre de 2026, Kendalumana informó que ejecutó Postman localmente y
+que todas las solicitudes salieron correctas. Esta es una declaración del
+integrante; no una nueva ejecución realizada por el asistente.
+La evidencia guardada en [evidencia-postman.txt](evidencia-postman.txt) registra
+75 solicitudes y 97 aserciones sin fallos. No se ha sustituido ese archivo ni se
+le atribuye una fecha nueva. La ejecución de Postman no sustituye la revisión
+cruzada del código.
+
+## Registro pendiente de la compañera
+
+- Revisora: yulianaurena.
+- Alcance previsto: usuarios, vehículos y reservas.
+- Fecha, commit, comprobaciones, resultados y enlace de comentario: pendientes.
+- Completar únicamente con la revisión que efectivamente realice. Si ya la hizo,
+  conservar su fecha real y distinguir lectura de código de ejecución de pruebas.
+
+## Ramas históricas de trabajo
 
 1. `integration/cierre-backend`: reúne el resultado final. La integración inicial
    de reservas con baja de usuarios es el commit `552b2dc`, que conserva ambas historias.
@@ -10,11 +42,10 @@ Estado: preparada para revisión humana; sin aprobación ni fusión a main.
 3. `refactor/paginacion-compartida`: mueve la función existente a `config/paginacion.py`.
 4. `docs/cierre-entrega`: recorrido completo, datos ficticios, evidencias y documentación.
 
-Las ramas conservan etapas del trabajo. Para revisar el cierre completo, comparar
-`integration/cierre-backend` con main. Para correcciones, comparar la rama fix con
-`552b2dc`; para paginación, comparar refactor con fix; para documentación y recorrido,
-comparar docs con refactor. Publicar y crear PR antes de pedir aprobación al otro
-integrante. No fusionar sin ella.
+Las ramas conservan etapas del trabajo. Los PR #4, #6 y #8 ya se fusionaron a
+main. La revisión de cierre debe identificar el commit final examinado; no es
+necesario repetir la fusión ni presentar una revisión posterior como aprobación
+previa. Los comentarios de cierre se pueden registrar en el PR #4 y enlazar aquí.
 
 ## Puntos de revisión
 

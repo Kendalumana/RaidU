@@ -31,6 +31,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'usuarios',
     'vehiculos',
+    'viajes',
+    'reservas',
+    'calificaciones',
 ]
 
 REST_FRAMEWORK = {

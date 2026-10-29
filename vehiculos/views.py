@@ -1,11 +1,13 @@
 from django.core.paginator import InvalidPage, Paginator
 from django.db import IntegrityError
 from django.db.models import Q
+from django.db.models.deletion import ProtectedError
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from usuarios.permisos import es_soporte
 from .models import Vehiculo
 from .serializers import VehiculoSerializer
 
@@ -13,7 +15,7 @@ from .serializers import VehiculoSerializer
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def vehiculos_api(request):
-    soporte = request.user.groups.filter(name='Soporte').exists()
+    soporte = es_soporte(request.user)
 
     if request.method == 'GET':
         vehiculos = Vehiculo.objects.order_by('id')
@@ -41,7 +43,7 @@ def vehiculos_api(request):
             'results': serializer.data,
         })
 
-    if soporte and not request.user.is_staff:
+    if soporte:
         return Response({'detail': 'Soporte solo tiene acceso de lectura.'}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = VehiculoSerializer(data=request.data)
@@ -58,8 +60,8 @@ def vehiculos_api(request):
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def vehiculo_detalle_api(request, pk):
-    soporte = request.user.groups.filter(name='Soporte').exists()
-    if soporte and not request.user.is_staff and request.method != 'GET':
+    soporte = es_soporte(request.user)
+    if soporte and request.method != 'GET':
         return Response({'detail': 'Soporte solo tiene acceso de lectura.'}, status=status.HTTP_403_FORBIDDEN)
 
     try:
@@ -86,5 +88,9 @@ def vehiculo_detalle_api(request, pk):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    vehiculo.delete()
+    try:
+        vehiculo.delete()
+    except ProtectedError:
+        return Response({'detail': 'No se puede eliminar un vehiculo con viajes asociados.'},
+                        status=status.HTTP_409_CONFLICT)
     return Response(status=status.HTTP_204_NO_CONTENT)

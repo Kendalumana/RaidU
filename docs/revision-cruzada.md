@@ -26,7 +26,7 @@ La evidencia guardada en [evidencia-postman.txt](evidencia-postman.txt) registra
 le atribuye una fecha nueva. La ejecución de Postman no sustituye la revisión
 cruzada del código.
 
-## Registro pendiente de la compañera
+## Revisión registrada de la compañera
 
 - Revisora: yulianaurena.
 - Alcance previsto: usuarios, vehículos y reservas.

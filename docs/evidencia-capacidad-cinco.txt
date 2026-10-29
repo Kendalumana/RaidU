@@ -1,0 +1,17 @@
+Verificacion del limite de capacidad - 29 de octubre de 2026 (Costa Rica)
+Base del cambio: e6b6d44. Cambio: vehiculos con 1 a 5 pasajeros, sin conductor.
+
+Antes del cambio, las comprobaciones nuevas detectaron que capacidad=6 se aceptaba.
+Despues del cambio:
+- python manage.py test --noinput: Ran 84 tests in 18.757s; OK.
+- Las pruebas existentes se ampliaron para POST, PUT y PATCH con 0, 6 y 32767
+  rechazados, y 1 y 5 aceptados; tambien validacion del modelo y restricciones SQL.
+- python manage.py migrate --noinput: vehiculos.0002_limitar_capacidad_cinco OK.
+- python manage.py makemigrations --check --dry-run: No changes detected.
+- python scripts/verificar_postman.py: 75 solicitudes y 97 aserciones, cero fallos.
+  Duracion del recorrido: 10.6 s. MySQL temporal y migraciones desde cero.
+- Documento Word: 9 paginas; pagina de entidades revisada visualmente.
+
+No se encontraron vehiculos con capacidad mayor que 5 en la base local antes
+ de migrar. Otras instalaciones deben revisar sus datos antes de aplicar la
+ migracion; no se recortan capacidades automaticamente.

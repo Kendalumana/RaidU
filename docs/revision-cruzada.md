@@ -88,7 +88,7 @@ resultados anteriores; no se atribuyen como ejecuciones de esta lectura.
 
 ## Ramas históricas de trabajo
 
-1. `integration/cierre-backend`: reúne el resultado final. La integración inicial
+1. `integration/cierre-backend`: reunió la integración inicial. La integración inicial
    de reservas con baja de usuarios es el commit `552b2dc`, que conserva ambas historias.
 2. `fix/validaciones-viajes-calificaciones`: filtros tipados, estado inicial y pruebas de API.
 3. `refactor/paginacion-compartida`: mueve la función existente a `config/paginacion.py`.
@@ -99,7 +99,10 @@ main. La revisión de cierre debe identificar el commit final examinado; no es
 necesario repetir la fusión ni presentar una revisión posterior como aprobación
 previa. Los comentarios de cierre se pueden registrar en el PR #4 y enlazar aquí.
 
-## Puntos de revisión
+## Guía para completar la revisión personal
+
+Las casillas siguientes corresponden a la revisión personal pendiente; no indican
+que las funciones estén sin implementar ni que falten las evidencias ya guardadas.
 
 - [ ] Ejecutar las pruebas automatizadas en la computadora de la otra integrante.
 - [ ] Ejecutar la colección o `scripts/verificar_postman.py` con MySQL local.

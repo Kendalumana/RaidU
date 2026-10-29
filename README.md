@@ -99,6 +99,11 @@ El token se obtiene con `POST /api/token/`.
 
 ### Vehículos
 
+La capacidad admitida es de 1 a 5 pasajeros, sin incluir al conductor. Se valida
+en la API, el formulario administrativo y la base de datos. Tras actualizar el
+proyecto, ejecutar `python manage.py migrate`. Si existen vehículos con capacidad
+mayor que 5 en otra instalación, revisar esos datos antes de aplicar la migración.
+
 - `GET /api/vehiculos/`: lista los vehículos propios para usuarios regulares;
   administrador y `Soporte` pueden consultar todos.
 - `POST /api/vehiculos/`: crea un vehículo del usuario autenticado.
@@ -289,7 +294,7 @@ python scripts/verificar_postman.py
 El script aplica migraciones desde cero, carga cuentas ficticias, inicia un servidor
 local y ejecuta Postman CLI. Desactiva el envío de eventos del recorrido y elimina
 la base temporal al finalizar. Guarda una evidencia de salida sin claves ni tokens.
-La base de desarrollo no se modifica. La colección de 16 solicitudes de reservas
+La base de desarrollo no se modifica. La colección de 30 solicitudes de reservas
 permanece disponible para pruebas manuales específicas.
 
 ## Evidencia y revisión
@@ -303,4 +308,6 @@ permanece disponible para pruebas manuales específicas.
 
 Limitaciones: backend sin frontend, pago simulado, sin notificaciones ni cobros reales.
 Las reservas canceladas no se reactivan y solo se identifica al titular de cada reserva.
-La aprobación cruzada y la fusión a `main` corresponden al equipo.
+La integración a `main` ya está realizada. El comentario de revisión asistida está
+registrado; el cierre de la revisión cruzada personal sigue pendiente. Consultar
+[el registro de revisión](docs/revision-cruzada.md) para su estado actualizado.

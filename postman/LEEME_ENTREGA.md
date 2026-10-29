@@ -4,7 +4,7 @@
 
 - `Cierre_RaidU.postman_collection.json`: recorrido principal de 75 solicitudes numeradas.
 - `Entrega_RaidU.postman_environment.json`: ejemplo sin contraseñas ni tokens; solo base_url y demo_password vacío.
-- `evidencia-postman.txt`: resultado de la ejecución comprobada.
+- [Evidencia de Postman](../docs/evidencia-postman.txt): resultado de la ejecución comprobada.
 
 El repositorio conserva un recorrido opcional de 30 solicitudes específico de
 reservas. No hace falta importarlo para esta entrega; requiere su propia preparación.

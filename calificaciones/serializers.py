@@ -58,9 +58,11 @@ class CalificacionSerializer(serializers.ModelSerializer):
                     'Solo se pueden calificar viajes finalizados.'
                 })
 
-        if request and calificado:
+        calificador = self.instance.calificador if self.instance else (request.user if request else None)
 
-            if calificado.id == request.user.id:
+        if calificador and calificado:
+
+            if calificado.id == calificador.id:
                 raise serializers.ValidationError({
                     'calificado':
                     'Un usuario no puede calificarse a si mismo.'

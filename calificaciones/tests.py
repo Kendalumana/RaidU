@@ -86,6 +86,14 @@ class CalificacionesAPITests(APITestCase):
             with self.subTest(query=query):
                 self.assertEqual(self.client.get('/api/calificaciones/?'+query).status_code, 400)
 
+    def test_administrador_puede_editar_calificacion_recibida(self):
+        self.reserva = Reserva.objects.create(viaje=self.viaje, pasajero=self.admin, cupos=1)
+        respuesta = self.calificar(calificado=self.admin.pk)
+        self.assertEqual(respuesta.status_code, 201)
+        self.client.force_authenticate(self.admin)
+        url = f"/api/calificaciones/{respuesta.data['id']}/"
+        self.assertEqual(self.client.patch(url, {'puntaje': 4}, format='json').status_code, 200)
+
     def test_filtros_orden_y_paginacion(self):
         for i in range(11):
             usuario = get_user_model().objects.create_user(username=f'cal_filtro{i}')

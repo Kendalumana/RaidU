@@ -99,6 +99,11 @@ El token se obtiene con `POST /api/token/`.
 
 ### Vehículos
 
+La capacidad admitida es de 1 a 5 pasajeros, sin incluir al conductor. Se valida
+en la API, el formulario administrativo y la base de datos. Tras actualizar el
+proyecto, ejecutar `python manage.py migrate`. Si existen vehículos con capacidad
+mayor que 5 en otra instalación, revisar esos datos antes de aplicar la migración.
+
 - `GET /api/vehiculos/`: lista los vehículos propios para usuarios regulares;
   administrador y `Soporte` pueden consultar todos.
 - `POST /api/vehiculos/`: crea un vehículo del usuario autenticado.

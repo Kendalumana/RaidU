@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.db import IntegrityError
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from rest_framework.test import APITestCase
 from .models import Vehiculo
@@ -77,6 +78,21 @@ class VehiculoTests(APITestCase):
         self.assertEqual(self.vehiculo.placa, 'ABC123')
         self.assertEqual(self.vehiculo.capacidad, 4)
 
+        for capacidad in [0, 6, 32767]:
+            for metodo, url in [('post', '/api/vehiculos/'), ('put', self.url), ('patch', self.url)]:
+                with self.subTest(capacidad=capacidad, metodo=metodo):
+                    datos = dict(self.datos, capacidad=capacidad)
+                    respuesta = getattr(self.client, metodo)(url, datos, format='json')
+                    self.assertEqual(respuesta.status_code, 400)
+                    self.assertIn('capacidad', respuesta.data)
+        for capacidad in [1, 5]:
+            with self.subTest(capacidad_valida=capacidad):
+                datos = dict(self.datos, placa=f'LIM{capacidad}', capacidad=capacidad)
+                self.assertEqual(self.client.post('/api/vehiculos/', datos, format='json').status_code, 201)
+                datos['placa'] = 'ABC123'
+                self.assertEqual(self.client.put(self.url, datos, format='json').status_code, 200)
+                self.assertEqual(self.client.patch(self.url, {'capacidad': capacidad}, format='json').status_code, 200)
+
     def test_permisos(self):
         self.client.force_authenticate(user=self.otro)
         respuesta = self.client.get(self.url)
@@ -128,9 +144,17 @@ class VehiculoTests(APITestCase):
         respuesta = self.client.get('/api/vehiculos/?page=abc')
         self.assertEqual(respuesta.status_code, 404)
 
-    def test_base_de_datos_impide_capacidad_cero(self):
-        self.vehiculo.capacidad = 0
-        with self.assertRaises(IntegrityError):
+    def test_modelo_y_base_impiden_capacidad_fuera_de_rango(self):
+        for capacidad in [0, 6]:
+            with self.subTest(capacidad=capacidad):
+                self.vehiculo.capacidad = capacidad
+                with self.assertRaises(ValidationError):
+                    self.vehiculo.full_clean()
+                with self.assertRaises(IntegrityError), transaction.atomic():
+                    self.vehiculo.save()
+        for capacidad in [1, 5]:
+            self.vehiculo.capacidad = capacidad
+            self.vehiculo.full_clean()
             self.vehiculo.save()
 
     def test_base_de_datos_impide_placa_duplicada(self):

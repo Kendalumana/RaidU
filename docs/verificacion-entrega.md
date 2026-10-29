@@ -67,3 +67,9 @@ de evidencia elimina líneas vacías finales y no cambia el comportamiento de la
 El archivo `entrega.txt` contiene el enlace del repositorio. La integración ya está
 publicada; queda confirmar la entrega en Mediación y completar la constancia de
 revisión cruzada.
+
+## Limite de capacidad actualizado
+
+El 29 de octubre se limito la capacidad de vehiculos a 1–5 pasajeros, sin conductor.
+Se repitieron las 84 pruebas y el recorrido Postman de 75 solicitudes y 97 aserciones,
+sin fallos. La nueva migracion se aplico localmente. Ver `evidencia-capacidad-cinco.txt`.

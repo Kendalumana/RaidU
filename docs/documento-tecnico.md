@@ -96,7 +96,7 @@ son tablas de autenticación estándar, omitidas del diagrama de negocio.
 - DELETE Reserva cancela y devuelve 204; repetirlo no libera cupos otra vez.
 - Calificación usa `CASCADE` para sus relaciones, como en el módulo existente.
   La API de usuarios no borra físicamente cuentas y las reservas protegen el viaje.
-- La base restringe capacidad positiva, sedes distintas, costo positivo, rango de
+- La base restringe capacidad de 1 a 5 pasajeros (sin conductor), sedes distintas, costo positivo, rango de
   cupos disponibles, estados de viaje/reserva y unicidades. Puntaje 1–5 se valida en API.
 
 ## Reglas verificables

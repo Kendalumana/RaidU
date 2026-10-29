@@ -2,7 +2,7 @@
   "info": {
     "name": "RaidU - Cierre de los cinco modulos",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Ejecutar cargar_demo con DEMO_PASSWORD; configurar base_url y demo_password en un entorno privado. Ejecutar en orden en una base de demostracion. Se crean y modifican datos ficticios. Para una verificacion aislada ejecutar python scripts/verificar_postman.py."
+    "description": "Recorrido de entrega de los cinco modulos. Preparar una base de demostracion y las cinco cuentas ficticias con cargar_demo. El evaluador define demo_password en su entorno local. Ejecutar todas las solicitudes numeradas en orden; la coleccion obtiene tokens e identificadores propios, sin credenciales incluidas. Crea, modifica y cancela datos ficticios; no usar sobre datos reales."
   },
   "variable": [
     {
@@ -2614,6 +2614,973 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "57 Actualizar perfil propio",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/perfil/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"first_name\": \"Demo\", \"telefono\": \"00000000\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().telefono).to.eql(\"00000000\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "58 Consultar detalle de vehiculo",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/vehiculos/{{vehiculo_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "59 PUT completo de vehiculo",
+      "request": {
+        "method": "PUT",
+        "url": "{{base_url}}/api/vehiculos/{{vehiculo_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"placa\": \"{{placa}}\", \"marca\": \"Demo\", \"modelo\": \"Prueba\", \"capacidad\": 4, \"activo\": true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().capacidad).to.eql(4); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "60 PATCH valido de vehiculo",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/vehiculos/{{vehiculo_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"modelo\": \"Prueba actualizada\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().modelo).to.eql(\"Prueba actualizada\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "61 Crear viaje adicional para CRUD",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/viajes/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 201. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"vehiculo\": \"{{vehiculo_id}}\", \"sede_origen\": \"puntarenas\", \"sede_destino\": \"esparza\", \"fecha_hora\": \"{{fecha_futura}}\", \"cupos_totales\": 4, \"costo_total\": \"6000.00\", \"estado\": \"publicado\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) pm.collectionVariables.set(\"viaje_crud_id\", pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "62 PUT completo de viaje",
+      "request": {
+        "method": "PUT",
+        "url": "{{base_url}}/api/viajes/{{viaje_crud_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"vehiculo\": \"{{vehiculo_id}}\", \"sede_origen\": \"puntarenas\", \"sede_destino\": \"esparza\", \"fecha_hora\": \"{{fecha_futura}}\", \"cupos_totales\": 4, \"costo_total\": \"6000.00\", \"estado\": \"publicado\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().cupos_disponibles).to.eql(4); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "63 Reservar viaje adicional",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/reservas/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 201. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_crud_id}}\", \"cupos\": 1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) pm.collectionVariables.set(\"reserva_crud_id\", pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "64 PUT completo de reserva",
+      "request": {
+        "method": "PUT",
+        "url": "{{base_url}}/api/reservas/{{reserva_crud_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_crud_id}}\", \"cupos\": 2}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().cupos).to.eql(2); });",
+              "pm.test(\"Contenido 2\", () => { pm.expect(pm.response.json().monto_simulado).to.eql(\"6000.00\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "65 Cancelar reserva adicional",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/reservas/{{reserva_crud_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 204. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "66 Viaje con historial cancelado permanece protegido",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/viajes/{{viaje_crud_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 409. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "67 Crear calificacion para CRUD completo",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/calificaciones/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 201. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"calificado\": \"{{conductor_id}}\", \"puntaje\": 5}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) pm.collectionVariables.set(\"calificacion_crud_id\", pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "68 Consultar detalle de calificacion",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/calificaciones/{{calificacion_crud_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "69 PUT completo de calificacion por autor",
+      "request": {
+        "method": "PUT",
+        "url": "{{base_url}}/api/calificaciones/{{calificacion_crud_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"viaje\": \"{{viaje_id}}\", \"calificado\": \"{{conductor_id}}\", \"puntaje\": 3, \"comentario\": \"Valoracion ficticia de prueba\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().puntaje).to.eql(3); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "70 Administrador no edita calificacion ajena",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/calificaciones/{{calificacion_crud_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 403. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_admin}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"puntaje\": 4}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "71 Autor elimina su calificacion",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/calificaciones/{{calificacion_crud_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 204. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "72 Crear viaje sin reservas para borrado",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/viajes/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 201. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"vehiculo\": \"{{vehiculo_id}}\", \"sede_origen\": \"puntarenas\", \"sede_destino\": \"esparza\", \"fecha_hora\": \"{{fecha_futura}}\", \"cupos_totales\": 4, \"costo_total\": \"6000.00\", \"estado\": \"publicado\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) pm.collectionVariables.set(\"viaje_borrable_id\", pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "73 Eliminar viaje sin historial",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/viajes/{{viaje_borrable_id}}/",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 204. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "74 Paginar viajes",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/viajes/?page=1",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_conductor}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().resultados.length).to.be.at.most(10); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "75 Paginar reservas",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/reservas/?page=1",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Respuesta esperada: 200. Ejecutar en orden despues de las solicitudes anteriores; utiliza cuentas ficticias del evaluador.",
+        "auth": {
+          "type": "apikey",
+          "apikey": [
+            {
+              "key": "key",
+              "value": "Authorization",
+              "type": "string"
+            },
+            {
+              "key": "value",
+              "value": "Token {{token_pasajero}}",
+              "type": "string"
+            },
+            {
+              "key": "in",
+              "value": "header",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Contenido 1\", () => { pm.expect(pm.response.json().resultados.length).to.be.at.most(10); });"
             ]
           }
         }

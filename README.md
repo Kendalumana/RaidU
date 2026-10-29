@@ -276,7 +276,7 @@ pertenece al grupo correspondiente y admin tiene `is_staff=True`.
 Repetir el comando conserva cinco cuentas y actualiza su clave; usar solo en un entorno local.
 
 Importar [la colección completa](postman/Cierre_RaidU.postman_collection.json) en Postman
-y configurar `base_url` y `demo_password` en un entorno privado. Ejecutar las **56
+y configurar `base_url` y `demo_password` en un entorno privado. Ejecutar las **75
 solicitudes en orden**: la colección obtiene los tokens, crea vehículos/viajes/reservas,
 califica y prueba permisos, filtros y baja de cuentas. No versionar el entorno privado.
 

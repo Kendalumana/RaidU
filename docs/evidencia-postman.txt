@@ -8,315 +8,419 @@ RaidU - Cierre de los cinco modulos
 
 Root 01 Anonimo requiere token
 
-  GET http://127.0.0.1:52543/api/viajes/ [401 Unauthorized, 423 B, 175 ms]
+  GET http://127.0.0.1:51655/api/viajes/ [401 Unauthorized, 423 B, 186 ms]
   Pass  HTTP 401
 
 Root 02 Rechazar correo externo
 
-  POST http://127.0.0.1:52543/api/usuarios/registro/ [400 Bad Request, 384 B, 56 ms]
+  POST http://127.0.0.1:51655/api/usuarios/registro/ [400 Bad Request, 384 B, 59 ms]
   Pass  HTTP 400
 
 Root 03 Registrar cuenta ficticia
 
-  POST http://127.0.0.1:52543/api/usuarios/registro/ [201 Created, 539 B, 371 ms]
+  POST http://127.0.0.1:51655/api/usuarios/registro/ [201 Created, 539 B, 451 ms]
   Pass  HTTP 201
 
 Root 04 Token conductor
 
-  POST http://127.0.0.1:52543/api/token/ [200 OK, 362 B, 350 ms]
+  POST http://127.0.0.1:51655/api/token/ [200 OK, 362 B, 406 ms]
   Pass  HTTP 200
 
 Root 05 Token pasajero
 
-  POST http://127.0.0.1:52543/api/token/ [200 OK, 362 B, 359 ms]
+  POST http://127.0.0.1:51655/api/token/ [200 OK, 362 B, 349 ms]
   Pass  HTTP 200
 
 Root 06 Token otro
 
-  POST http://127.0.0.1:52543/api/token/ [200 OK, 362 B, 359 ms]
+  POST http://127.0.0.1:51655/api/token/ [200 OK, 362 B, 393 ms]
   Pass  HTTP 200
 
 Root 07 Token admin
 
-  POST http://127.0.0.1:52543/api/token/ [200 OK, 362 B, 433 ms]
+  POST http://127.0.0.1:51655/api/token/ [200 OK, 362 B, 470 ms]
   Pass  HTTP 200
 
 Root 08 Token soporte
 
-  POST http://127.0.0.1:52543/api/token/ [200 OK, 362 B, 383 ms]
+  POST http://127.0.0.1:51655/api/token/ [200 OK, 362 B, 437 ms]
   Pass  HTTP 200
 
 Root 09 Perfil conductor
 
-  GET http://127.0.0.1:52543/api/perfil/ [200 OK, 457 B, 17 ms]
+  GET http://127.0.0.1:51655/api/perfil/ [200 OK, 457 B, 33 ms]
   Pass  HTTP 200
 
 Root 10 Soporte consulta usuarios
 
-  GET http://127.0.0.1:52543/api/usuarios/ [200 OK, 1.16 KB, 19 ms]
+  GET http://127.0.0.1:51655/api/usuarios/ [200 OK, 1.16 KB, 42 ms]
   Pass  HTTP 200
 
 Root 11 Usuario no lista cuentas
 
-  GET http://127.0.0.1:52543/api/usuarios/ [403 Forbidden, 365 B, 20 ms]
+  GET http://127.0.0.1:51655/api/usuarios/ [403 Forbidden, 365 B, 24 ms]
   Pass  HTTP 403
 
 Root 12 Crear vehiculo
 
-  POST http://127.0.0.1:52543/api/vehiculos/ [201 Created, 426 B, 21 ms]
+  POST http://127.0.0.1:51655/api/vehiculos/ [201 Created, 426 B, 43 ms]
   Pass  HTTP 201
 
 Root 13 Buscar vehiculo
 
-  GET http://127.0.0.1:52543/api/vehiculos/?search=C47838675 [200 OK, 470 B, 18 ms]
+  GET http://127.0.0.1:51655/api/vehiculos/?search=C52016914 [200 OK, 470 B, 42 ms]
   Pass  HTTP 200
   Pass  Contenido 1
 
 Root 14 Vehiculo ajeno protegido
 
-  PATCH http://127.0.0.1:52543/api/vehiculos/1/ [403 Forbidden, 392 B, 21 ms]
+  PATCH http://127.0.0.1:51655/api/vehiculos/1/ [403 Forbidden, 392 B, 23 ms]
   Pass  HTTP 403
 
 Root 15 Capacidad invalida
 
-  PATCH http://127.0.0.1:52543/api/vehiculos/1/ [400 Bad Request, 406 B, 16 ms]
+  PATCH http://127.0.0.1:51655/api/vehiculos/1/ [400 Bad Request, 406 B, 36 ms]
   Pass  HTTP 400
 
 Root 16 Crear vehiculo sin viajes
 
-  POST http://127.0.0.1:52543/api/vehiculos/ [201 Created, 426 B, 19 ms]
+  POST http://127.0.0.1:51655/api/vehiculos/ [201 Created, 426 B, 54 ms]
   Pass  HTTP 201
 
 Root 17 Eliminar vehiculo sin viajes
 
-  DELETE http://127.0.0.1:52543/api/vehiculos/2/ [204 No Content, 304 B, 36 ms]
+  DELETE http://127.0.0.1:51655/api/vehiculos/2/ [204 No Content, 304 B, 139 ms]
   Pass  HTTP 204
 
 Root 18 Rechazar viaje inicialmente finalizado
 
-  POST http://127.0.0.1:52543/api/viajes/ [400 Bad Request, 378 B, 55 ms]
+  POST http://127.0.0.1:51655/api/viajes/ [400 Bad Request, 378 B, 228 ms]
   Pass  HTTP 400
 
 Root 19 Publicar viaje
 
-  POST http://127.0.0.1:52543/api/viajes/ [201 Created, 578 B, 28 ms]
+  POST http://127.0.0.1:51655/api/viajes/ [201 Created, 578 B, 40 ms]
   Pass  HTTP 201
   Pass  Contenido 1
   Pass  Contenido 2
 
 Root 20 Filtro de cupos invalido
 
-  GET http://127.0.0.1:52543/api/viajes/?cupos_minimos=abc [400 Bad Request, 383 B, 11 ms]
+  GET http://127.0.0.1:51655/api/viajes/?cupos_minimos=abc [400 Bad Request, 383 B, 28 ms]
   Pass  HTTP 400
 
 Root 21 Filtrar viajes combinados
 
-  GET http://127.0.0.1:52543/api/viajes/?sede_origen=puntarenas&sede_destino=esparza&estado=publicado&ordering=-fecha_hora [200 OK, 646 B, 19 ms]
+  GET http://127.0.0.1:51655/api/viajes/?sede_origen=puntarenas&sede_destino=esparza&estado=publicado&ordering=-fecha_hora [200 OK, 646 B, 36 ms]
   Pass  HTTP 200
 
 Root 22 Viaje ajeno protegido
 
-  PATCH http://127.0.0.1:52543/api/viajes/1/ [403 Forbidden, 392 B, 23 ms]
+  PATCH http://127.0.0.1:51655/api/viajes/1/ [403 Forbidden, 392 B, 38 ms]
   Pass  HTTP 403
 
 Root 23 Conductor no reserva viaje propio
 
-  POST http://127.0.0.1:52543/api/reservas/ [400 Bad Request, 370 B, 23 ms]
+  POST http://127.0.0.1:51655/api/reservas/ [400 Bad Request, 370 B, 85 ms]
   Pass  HTTP 400
 
 Root 24 Reservar dos cupos
 
-  POST http://127.0.0.1:52543/api/reservas/ [201 Created, 454 B, 36 ms]
+  POST http://127.0.0.1:51655/api/reservas/ [201 Created, 454 B, 265 ms]
   Pass  HTTP 201
   Pass  Contenido 1
 
 Root 25 Rechazar reserva duplicada
 
-  POST http://127.0.0.1:52543/api/reservas/ [409 Conflict, 387 B, 19 ms]
+  POST http://127.0.0.1:51655/api/reservas/ [409 Conflict, 387 B, 65 ms]
   Pass  HTTP 409
 
 Root 26 Rechazar sobreventa
 
-  POST http://127.0.0.1:52543/api/reservas/ [409 Conflict, 371 B, 25 ms]
+  POST http://127.0.0.1:51655/api/reservas/ [409 Conflict, 371 B, 145 ms]
   Pass  HTTP 409
 
 Root 27 Ocupar ultimos cupos
 
-  POST http://127.0.0.1:52543/api/reservas/ [201 Created, 454 B, 36 ms]
+  POST http://127.0.0.1:51655/api/reservas/ [201 Created, 454 B, 96 ms]
   Pass  HTTP 201
   Pass  Contenido 1
 
 Root 28 Viaje lleno
 
-  GET http://127.0.0.1:52543/api/viajes/1/ [200 OK, 583 B, 13 ms]
+  GET http://127.0.0.1:51655/api/viajes/1/ [200 OK, 583 B, 86 ms]
   Pass  HTTP 200
   Pass  Contenido 1
   Pass  Contenido 2
 
 Root 29 Proteger capacidad ocupada
 
-  PATCH http://127.0.0.1:52543/api/viajes/1/ [400 Bad Request, 416 B, 19 ms]
+  PATCH http://127.0.0.1:51655/api/viajes/1/ [400 Bad Request, 416 B, 135 ms]
   Pass  HTTP 400
 
 Root 30 Soporte no modifica reservas
 
-  PATCH http://127.0.0.1:52543/api/reservas/1/ [403 Forbidden, 402 B, 16 ms]
+  PATCH http://127.0.0.1:51655/api/reservas/1/ [403 Forbidden, 402 B, 218 ms]
   Pass  HTTP 403
 
 Root 31 Reserva ajena protegida
 
-  GET http://127.0.0.1:52543/api/reservas/1/ [403 Forbidden, 406 B, 15 ms]
+  GET http://127.0.0.1:51655/api/reservas/1/ [403 Forbidden, 406 B, 141 ms]
   Pass  HTTP 403
 
 Root 32 Filtrar reservas
 
-  GET http://127.0.0.1:52543/api/reservas/?viaje=1&estado=confirmada&pasajero=2 [200 OK, 522 B, 17 ms]
+  GET http://127.0.0.1:51655/api/reservas/?viaje=1&estado=confirmada&pasajero=2 [200 OK, 522 B, 68 ms]
   Pass  HTTP 200
   Pass  Contenido 1
 
 Root 33 Modificar cupos
 
-  PATCH http://127.0.0.1:52543/api/reservas/1/ [200 OK, 463 B, 34 ms]
+  PATCH http://127.0.0.1:51655/api/reservas/1/ [200 OK, 463 B, 106 ms]
   Pass  HTTP 200
   Pass  Contenido 1
 
 Root 34 Cancelar reserva
 
-  DELETE http://127.0.0.1:52543/api/reservas/2/ [204 No Content, 304 B, 29 ms]
+  DELETE http://127.0.0.1:51655/api/reservas/2/ [204 No Content, 304 B, 115 ms]
   Pass  HTTP 204
 
 Root 35 Repetir cancelacion
 
-  DELETE http://127.0.0.1:52543/api/reservas/2/ [204 No Content, 304 B, 18 ms]
+  DELETE http://127.0.0.1:51655/api/reservas/2/ [204 No Content, 304 B, 44 ms]
   Pass  HTTP 204
 
 Root 36 Recalcular monto restante
 
-  GET http://127.0.0.1:52543/api/reservas/1/ [200 OK, 463 B, 17 ms]
+  GET http://127.0.0.1:51655/api/reservas/1/ [200 OK, 463 B, 42 ms]
   Pass  HTTP 200
   Pass  Contenido 1
 
 Root 37 Borrado protegido de vehiculo
 
-  DELETE http://127.0.0.1:52543/api/vehiculos/1/ [409 Conflict, 402 B, 18 ms]
+  DELETE http://127.0.0.1:51655/api/vehiculos/1/ [409 Conflict, 402 B, 51 ms]
   Pass  HTTP 409
 
 Root 38 Borrado protegido de viaje
 
-  DELETE http://127.0.0.1:52543/api/viajes/1/ [409 Conflict, 420 B, 20 ms]
+  DELETE http://127.0.0.1:51655/api/viajes/1/ [409 Conflict, 420 B, 50 ms]
   Pass  HTTP 409
 
 Root 39 No calificar antes del cierre
 
-  POST http://127.0.0.1:52543/api/calificaciones/ [400 Bad Request, 382 B, 16 ms]
+  POST http://127.0.0.1:51655/api/calificaciones/ [400 Bad Request, 382 B, 74 ms]
   Pass  HTTP 400
 
 Root 40 Iniciar viaje
 
-  PATCH http://127.0.0.1:52543/api/viajes/1/ [200 OK, 586 B, 36 ms]
+  PATCH http://127.0.0.1:51655/api/viajes/1/ [200 OK, 586 B, 123 ms]
   Pass  HTTP 200
 
 Root 41 Finalizar viaje
 
-  PATCH http://127.0.0.1:52543/api/viajes/1/ [200 OK, 588 B, 30 ms]
+  PATCH http://127.0.0.1:51655/api/viajes/1/ [200 OK, 588 B, 69 ms]
   Pass  HTTP 200
 
 Root 42 Calificar conductor
 
-  POST http://127.0.0.1:52543/api/calificaciones/ [201 Created, 441 B, 27 ms]
+  POST http://127.0.0.1:51655/api/calificaciones/ [201 Created, 441 B, 64 ms]
   Pass  HTTP 201
 
 Root 43 Rechazar calificacion duplicada
 
-  POST http://127.0.0.1:52543/api/calificaciones/ [400 Bad Request, 398 B, 22 ms]
+  POST http://127.0.0.1:51655/api/calificaciones/ [400 Bad Request, 398 B, 30 ms]
   Pass  HTTP 400
 
 Root 44 Rechazar puntaje fuera de rango
 
-  PATCH http://127.0.0.1:52543/api/calificaciones/1/ [400 Bad Request, 388 B, 20 ms]
+  PATCH http://127.0.0.1:51655/api/calificaciones/1/ [400 Bad Request, 388 B, 25 ms]
   Pass  HTTP 400
 
 Root 45 Rechazar autocalificacion
 
-  POST http://127.0.0.1:52543/api/calificaciones/ [400 Bad Request, 386 B, 22 ms]
+  POST http://127.0.0.1:51655/api/calificaciones/ [400 Bad Request, 386 B, 17 ms]
   Pass  HTTP 400
 
 Root 46 Pasajero cancelado no califica
 
-  POST http://127.0.0.1:52543/api/calificaciones/ [400 Bad Request, 389 B, 32 ms]
+  POST http://127.0.0.1:51655/api/calificaciones/ [400 Bad Request, 389 B, 29 ms]
   Pass  HTTP 400
 
 Root 47 Promedio del conductor
 
-  GET http://127.0.0.1:52543/api/calificaciones/promedio/1/ [200 OK, 362 B, 19 ms]
+  GET http://127.0.0.1:51655/api/calificaciones/promedio/1/ [200 OK, 362 B, 21 ms]
   Pass  HTTP 200
   Pass  Contenido 1
 
 Root 48 Filtrar calificaciones
 
-  GET http://127.0.0.1:52543/api/calificaciones/?viaje=1&puntaje=5&ordering=-fecha [200 OK, 509 B, 20 ms]
+  GET http://127.0.0.1:51655/api/calificaciones/?viaje=1&puntaje=5&ordering=-fecha [200 OK, 509 B, 31 ms]
   Pass  HTTP 200
   Pass  Contenido 1
 
 Root 49 Puntaje de filtro invalido
 
-  GET http://127.0.0.1:52543/api/calificaciones/?puntaje=abc [400 Bad Request, 377 B, 15 ms]
+  GET http://127.0.0.1:51655/api/calificaciones/?puntaje=abc [400 Bad Request, 377 B, 14 ms]
   Pass  HTTP 400
 
 Root 50 Soporte no elimina calificaciones
 
-  DELETE http://127.0.0.1:52543/api/calificaciones/1/ [403 Forbidden, 402 B, 27 ms]
+  DELETE http://127.0.0.1:51655/api/calificaciones/1/ [403 Forbidden, 402 B, 18 ms]
   Pass  HTTP 403
 
 Root 51 Autor actualiza puntaje
 
-  PATCH http://127.0.0.1:52543/api/calificaciones/1/ [200 OK, 450 B, 44 ms]
+  PATCH http://127.0.0.1:51655/api/calificaciones/1/ [200 OK, 450 B, 37 ms]
   Pass  HTTP 200
 
 Root 52 Promedio actualizado
 
-  GET http://127.0.0.1:52543/api/calificaciones/promedio/1/ [200 OK, 362 B, 34 ms]
+  GET http://127.0.0.1:51655/api/calificaciones/promedio/1/ [200 OK, 362 B, 23 ms]
   Pass  HTTP 200
   Pass  Contenido 1
 
 Root 53 Administrador elimina calificacion
 
-  DELETE http://127.0.0.1:52543/api/calificaciones/1/ [204 No Content, 304 B, 26 ms]
+  DELETE http://127.0.0.1:51655/api/calificaciones/1/ [204 No Content, 304 B, 36 ms]
   Pass  HTTP 204
 
 Root 54 Baja de cuenta propia
 
-  DELETE http://127.0.0.1:52543/api/usuarios/6/ [204 No Content, 287 B, 26 ms]
+  DELETE http://127.0.0.1:51655/api/usuarios/6/ [204 No Content, 287 B, 39 ms]
   Pass  HTTP 204
 
 Root 55 Token revocado despues de baja
 
-  GET http://127.0.0.1:52543/api/perfil/ [401 Unauthorized, 380 B, 19 ms]
+  GET http://127.0.0.1:51655/api/perfil/ [401 Unauthorized, 380 B, 20 ms]
   Pass  HTTP 401
 
 Root 56 Detalle inexistente
 
-  GET http://127.0.0.1:52543/api/viajes/999999999/ [404 Not Found, 369 B, 23 ms]
+  GET http://127.0.0.1:51655/api/viajes/999999999/ [404 Not Found, 369 B, 21 ms]
   Pass  HTTP 404
+
+Root 57 Actualizar perfil propio
+
+  PATCH http://127.0.0.1:51655/api/perfil/ [200 OK, 469 B, 52 ms]
+  Pass  HTTP 200
+  Pass  Contenido 1
+
+Root 58 Consultar detalle de vehiculo
+
+  GET http://127.0.0.1:51655/api/vehiculos/1/ [200 OK, 435 B, 38 ms]
+  Pass  HTTP 200
+
+Root 59 PUT completo de vehiculo
+
+  PUT http://127.0.0.1:51655/api/vehiculos/1/ [200 OK, 435 B, 30 ms]
+  Pass  HTTP 200
+  Pass  Contenido 1
+
+Root 60 PATCH valido de vehiculo
+
+  PATCH http://127.0.0.1:51655/api/vehiculos/1/ [200 OK, 447 B, 37 ms]
+  Pass  HTTP 200
+  Pass  Contenido 1
+
+Root 61 Crear viaje adicional para CRUD
+
+  POST http://127.0.0.1:51655/api/viajes/ [201 Created, 578 B, 35 ms]
+  Pass  HTTP 201
+
+Root 62 PUT completo de viaje
+
+  PUT http://127.0.0.1:51655/api/viajes/2/ [200 OK, 587 B, 45 ms]
+  Pass  HTTP 200
+  Pass  Contenido 1
+
+Root 63 Reservar viaje adicional
+
+  POST http://127.0.0.1:51655/api/reservas/ [201 Created, 454 B, 52 ms]
+  Pass  HTTP 201
+
+Root 64 PUT completo de reserva
+
+  PUT http://127.0.0.1:51655/api/reservas/3/ [200 OK, 463 B, 52 ms]
+  Pass  HTTP 200
+  Pass  Contenido 1
+  Pass  Contenido 2
+
+Root 65 Cancelar reserva adicional
+
+  DELETE http://127.0.0.1:51655/api/reservas/3/ [204 No Content, 304 B, 41 ms]
+  Pass  HTTP 204
+
+Root 66 Viaje con historial cancelado permanece protegido
+
+  DELETE http://127.0.0.1:51655/api/viajes/2/ [409 Conflict, 420 B, 32 ms]
+  Pass  HTTP 409
+
+Root 67 Crear calificacion para CRUD completo
+
+  POST http://127.0.0.1:51655/api/calificaciones/ [201 Created, 441 B, 65 ms]
+  Pass  HTTP 201
+
+Root 68 Consultar detalle de calificacion
+
+  GET http://127.0.0.1:51655/api/calificaciones/2/ [200 OK, 450 B, 63 ms]
+  Pass  HTTP 200
+
+Root 69 PUT completo de calificacion por autor
+
+  PUT http://127.0.0.1:51655/api/calificaciones/2/ [200 OK, 479 B, 171 ms]
+  Pass  HTTP 200
+  Pass  Contenido 1
+
+Root 70 Administrador no edita calificacion ajena
+
+  PATCH http://127.0.0.1:51655/api/calificaciones/2/ [403 Forbidden, 399 B, 45 ms]
+  Pass  HTTP 403
+
+Root 71 Autor elimina su calificacion
+
+  DELETE http://127.0.0.1:51655/api/calificaciones/2/ [204 No Content, 304 B, 71 ms]
+  Pass  HTTP 204
+
+Root 72 Crear viaje sin reservas para borrado
+
+  POST http://127.0.0.1:51655/api/viajes/ [201 Created, 578 B, 51 ms]
+  Pass  HTTP 201
+
+Root 73 Eliminar viaje sin historial
+
+  DELETE http://127.0.0.1:51655/api/viajes/3/ [204 No Content, 304 B, 46 ms]
+  Pass  HTTP 204
+
+Root 74 Paginar viajes
+
+  GET http://127.0.0.1:51655/api/viajes/?page=1 [200 OK, 905 B, 51 ms]
+  Pass  HTTP 200
+  Pass  Contenido 1
+
+Root 75 Paginar reservas
+
+  GET http://127.0.0.1:51655/api/reservas/?page=1 [200 OK, 652 B, 55 ms]
+  Pass  HTTP 200
+  Pass  Contenido 1
 
 ------------------------------------------------------------------------
 |                         |             executed |              failed |
 --------------------------+----------------------+----------------------
 |              iterations |                    1 |                   0 |
 --------------------------+----------------------+----------------------
-|                requests |                   56 |                   0 |
+|                requests |                   75 |                   0 |
 --------------------------+----------------------+----------------------
-|            test-scripts |                   56 |                   0 |
+|            test-scripts |                   75 |                   0 |
 --------------------------+----------------------+----------------------
 |      prerequest-scripts |                    1 |                   0 |
 --------------------------+----------------------+----------------------
-|              assertions |                   69 |                   0 |
+|              assertions |                   97 |                   0 |
 ------------------------------------------------------------------------
-| total run duration: 4.9 s                                            |
+| total run duration: 13.5 s                                           |
 ------------------------------------------------------------------------
-| total data received: 5.83 KB (approx)                                |
+| total data received: 8.74 KB (approx)                                |
 ------------------------------------------------------------------------
-| average response time: 64 ms [min: 11 ms, max: 433 ms, s.d.: 110 ms] |
+| average response time: 93 ms [min: 14 ms, max: 470 ms, s.d.: 108 ms] |
 ------------------------------------------------------------------------
 Postman credentials are required for publishing run details to Postman cloud.
 Please specify it by using the `postman login` command

@@ -4,9 +4,9 @@ Fecha: 28 de octubre de 2026 (Costa Rica).
 
 ## Comprobaciones completadas
 
-- 75 pruebas automatizadas aprobadas en MySQL, incluyendo dos solicitudes por el
+- 84 pruebas automatizadas aprobadas en MySQL, incluyendo nueve del administrador y dos solicitudes por el
   último cupo, duplicado simultáneo y doble cancelación simultánea.
-- Postman CLI 1.73.0: 56 solicitudes y 69 aserciones, sin fallos, contra un servidor
+- Postman CLI 1.73.0: 75 solicitudes y 97 aserciones, sin fallos, contra un servidor
   HTTP real local y una base temporal con migraciones desde cero.
 - Recorrido específico de reservas: 30 solicitudes y 50 aserciones aprobadas en
   otra base temporal. Los dos recorridos se ejecutan por separado y no deben
@@ -43,19 +43,19 @@ de evidencia elimina líneas vacías finales y no cambia el comportamiento de la
 ## Cierre del equipo
 
 - Revisión cruzada humana: pendiente; ver `revision-cruzada.md`.
-- La integración anterior llegó a main mediante el PR #4. La corrección de edición
-  exclusiva del autor y validación de estados de viajes requiere revisión y fusión.
-- El PR #7 espera que un administrador edite una calificación ajena recibida. Ese
-  caso debe actualizarse a 403 para respetar la edición exclusiva del autor; no se
-  debe fusionar su prueba actual junto con esta regla.
-- Los conflictos del PR #6 se resolvieron incorporando main y la corrección del #8,
-  conservando las pruebas de participación y permisos. El #6 se compara con
-  fix/cierre-viajes mientras se revisa el #8. Después de fusionar el #8, cambiar
-  el destino del #6 a main, revisar el diff y registrar la aprobación cruzada.
-- Repetir la instalación limpia sobre el commit final que se entregará. Las 75
-  pruebas y Postman actuales usaron un checkout separado y bases temporales nuevas,
-  pero reutilizaron el entorno Python local. No equivalen a instalar dependencias
-  desde cero en esa versión.
+- Los PR #4, #8 y #6 se fusionaron a main. El #7 se cerró sin fusionar porque su
+  prueba de edición por administrador contradice la edición exclusiva del autor.
+- El administrador de viajes y reservas utiliza las operaciones de la API. Su
+  ampliación quedó en 6d5550a y pasó 84 pruebas; ver evidencia-admin.txt.
+- Se comprobó instalación limpia sobre aeb271e: entorno nuevo, requirements.txt,
+  pip check, 75 pruebas y ambos recorridos de Postman aprobados. El informe adicional
+  se conservó localmente; esa comprobación precede a la ampliación administrativa.
+- La colección de entrega se amplió de 56 a 75 solicitudes y se comprobó con 97
+  aserciones, usando migraciones desde cero y MySQL temporal. El entorno público
+  y las instrucciones están en postman/Entrega_RaidU.postman_environment.json y
+  postman/LEEME_ENTREGA.md. No contiene tokens ni contraseña del equipo.
+- La última ampliación reutilizó el entorno Python local. Si se exige comprobar
+  instalación limpia de cada commit final, repetirla sobre la versión entregada.
 - Confirmar acceso del docente y entregar el enlace en Mediación Virtual: responsabilidad del equipo.
 
 El archivo `entrega.txt` contiene el enlace del repositorio. Subirlo después de la

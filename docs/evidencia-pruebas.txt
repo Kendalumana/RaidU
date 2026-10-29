@@ -1,13 +1,11 @@
-Integracion de reservas con main y PR #8.
-Motor: MySQL temporal. Comando: python manage.py test --noinput
-
-Found 75 test(s).
+Suite de la ampliacion del administrador, base main 0953d8c, codigo publicado en 6d5550a.
+Found 84 test(s).
 System check identified no issues (0 silenced).
 Creating test database for alias 'default'...
 
-...........................................................................
+....................................................................................
 ----------------------------------------------------------------------
-Ran 75 tests in 11.058s
+Ran 84 tests in 21.881s
 
 OK
 Destroying test database for alias 'default'...

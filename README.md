@@ -236,6 +236,26 @@ administrador puede eliminarla; Soporte solo consulta.
 
 ## Datos ficticios y Postman
 
+### Pruebas desde el administrador
+
+Viajes y reservas permiten crear, consultar y modificar desde `/admin/` con los
+permisos de Django correspondientes. Sus formularios ejecutan las operaciones de
+la API con la cuenta conectada: conductor y pasajero se asignan automáticamente,
+y cupos disponibles, montos y fechas de reserva se calculan en el servidor.
+Al crear un viaje se debe usar un vehículo propio; para reservar ese viaje, entrar
+con otra cuenta autorizada a usar el administrador.
+
+Los errores de negocio aparecen en el formulario. Eliminar una reserva la cancela
+y conserva el historial; los viajes con reservas permanecen protegidos. No hay
+acciones masivas para evitar cambios que omitan esas reglas. Los módulos restantes
+conservan su configuración administrativa previa.
+
+La suite incluye nueve pruebas de formularios administrativos, permisos, CSRF,
+recálculo y cancelación. La evidencia de esta ampliación está en
+`docs/evidencia-admin.txt`.
+
+### Recorridos de Postman y datos ficticios
+
 El recorrido específico de reservas (30 solicitudes con comprobaciones de montos
 y estados) está explicado en [reservas/README.md](reservas/README.md). Se ejecuta
 con `python scripts/verificar_reservas_postman.py`, de manera separada de las pruebas

@@ -1,0 +1,17 @@
+Ampliacion del administrador de viajes y reservas sobre main 0953d8c.
+Comando: python manage.py test --noinput
+Motor: MySQL temporal; base eliminada al terminar.
+84 pruebas totales, incluidas 9 del administrador.
+Se verifican creacion y edicion, costo y cupos, sobreventa, duplicados, cancelacion con historial, viajes cerrados, permisos y CSRF.
+Los recorridos de Postman anteriores no se repitieron: esta ampliacion reutiliza las vistas de API existentes sin cambiarlas.
+
+Found 84 test(s).
+System check identified no issues (0 silenced).
+Creating test database for alias 'default'...
+
+....................................................................................
+----------------------------------------------------------------------
+Ran 84 tests in 21.881s
+
+OK
+Destroying test database for alias 'default'...

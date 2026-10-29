@@ -1,6 +1,7 @@
 # Verificación de entrega
 
-Fecha: 28 de octubre de 2026 (Costa Rica).
+Evidencias de ejecución: 28 de octubre de 2026 (Costa Rica).
+Estado de cierre actualizado: 29 de octubre de 2026.
 
 ## Comprobaciones completadas
 
@@ -42,7 +43,8 @@ de evidencia elimina líneas vacías finales y no cambia el comportamiento de la
 
 ## Cierre del equipo
 
-- Revisión cruzada humana: pendiente; ver `revision-cruzada.md`.
+- Comentario de revisión asistida registrado. El cierre de la revisión cruzada
+  personal y el comentario de la compañera siguen pendientes; ver `revision-cruzada.md`.
 - Los PR #4, #8 y #6 se fusionaron a main. El #7 se cerró sin fusionar porque su
   prueba de edición por administrador contradice la edición exclusiva del autor.
 - El administrador de viajes y reservas utiliza las operaciones de la API. Su
@@ -56,7 +58,12 @@ de evidencia elimina líneas vacías finales y no cambia el comportamiento de la
   postman/LEEME_ENTREGA.md. No contiene tokens ni contraseña del equipo.
 - La última ampliación reutilizó el entorno Python local. Si se exige comprobar
   instalación limpia de cada commit final, repetirla sobre la versión entregada.
-- Confirmar acceso del docente y entregar el enlace en Mediación Virtual: responsabilidad del equipo.
+- Integración a main y publicación del documento técnico actualizado: realizadas.
+- Autorización para equipo de dos: confirmada por Kendalumana, quien indica que
+  se acordó con el docente desde el inicio.
+- Repositorio público y enlace funcional: confirmados.
+- Subida de entrega.txt a Mediación Virtual y comprobante: aún no confirmados.
 
-El archivo `entrega.txt` contiene el enlace del repositorio. Subirlo después de la
-aprobación cruzada y de comprobar que main incluye la versión revisada.
+El archivo `entrega.txt` contiene el enlace del repositorio. La integración ya está
+publicada; queda confirmar la entrega en Mediación y completar la constancia de
+revisión cruzada.

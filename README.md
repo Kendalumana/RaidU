@@ -289,7 +289,7 @@ python scripts/verificar_postman.py
 El script aplica migraciones desde cero, carga cuentas ficticias, inicia un servidor
 local y ejecuta Postman CLI. Desactiva el envío de eventos del recorrido y elimina
 la base temporal al finalizar. Guarda una evidencia de salida sin claves ni tokens.
-La base de desarrollo no se modifica. La colección de 16 solicitudes de reservas
+La base de desarrollo no se modifica. La colección de 30 solicitudes de reservas
 permanece disponible para pruebas manuales específicas.
 
 ## Evidencia y revisión
@@ -303,4 +303,6 @@ permanece disponible para pruebas manuales específicas.
 
 Limitaciones: backend sin frontend, pago simulado, sin notificaciones ni cobros reales.
 Las reservas canceladas no se reactivan y solo se identifica al titular de cada reserva.
-La aprobación cruzada y la fusión a `main` corresponden al equipo.
+La integración a `main` ya está realizada. El comentario de revisión asistida está
+registrado; el cierre de la revisión cruzada personal sigue pendiente. Consultar
+[el registro de revisión](docs/revision-cruzada.md) para su estado actualizado.

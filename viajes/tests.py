@@ -138,3 +138,43 @@ class ViajesAPITests(APITestCase):
         self.client.force_authenticate(self.usuario)
         self.assertEqual(self.client.delete(url).status_code, 204)
         self.assertEqual(self.client.get(url).status_code, 404)
+
+    def test_rechaza_estado_incompatible_con_cupos(self):
+        respuesta = self.crear()
+        url = f"/api/viajes/{respuesta.data['id']}/"
+        self.assertEqual(self.client.patch(url, {'estado': 'lleno'}).status_code, 400)
+        self.client.force_authenticate(self.otro)
+        self.assertEqual(self.client.post('/api/reservas/', {
+            'viaje': respuesta.data['id'], 'cupos': 4,
+        }).status_code, 201)
+        self.client.force_authenticate(self.usuario)
+        self.assertEqual(self.client.patch(url, {'estado': 'publicado'}).status_code, 400)
+
+    def test_no_borra_viaje_con_reserva_confirmada(self):
+        respuesta = self.crear()
+        self.client.force_authenticate(self.otro)
+        self.assertEqual(self.client.post('/api/reservas/', {
+            'viaje': respuesta.data['id'], 'cupos': 1,
+        }).status_code, 201)
+        self.client.force_authenticate(self.usuario)
+        self.assertEqual(self.client.delete(f"/api/viajes/{respuesta.data['id']}/").status_code, 409)
+        self.assertTrue(Viaje.objects.filter(pk=respuesta.data['id']).exists())
+
+    def test_cambiar_capacidad_actualiza_estado_y_conserva_ocupados(self):
+        respuesta = self.crear()
+        url = f"/api/viajes/{respuesta.data['id']}/"
+        self.client.force_authenticate(self.otro)
+        self.assertEqual(self.client.post('/api/reservas/', {
+            'viaje': respuesta.data['id'], 'cupos': 2,
+        }).status_code, 201)
+        self.client.force_authenticate(self.usuario)
+        self.assertEqual(self.client.patch(url, {'cupos_totales': 1}).status_code, 400)
+        for capacidad, disponibles, estado in [(2, 0, 'lleno'), (4, 2, 'publicado')]:
+            with self.subTest(capacidad=capacidad):
+                cambio = self.client.patch(url, {'cupos_totales': capacidad})
+                self.assertEqual(cambio.status_code, 200)
+                self.assertEqual(cambio.data['cupos_disponibles'], disponibles)
+                self.assertEqual(cambio.data['estado'], estado)
+                viaje = Viaje.objects.get(pk=respuesta.data['id'])
+                self.assertEqual(viaje.estado, estado)
+                self.assertEqual(viaje.cupos_disponibles, disponibles)

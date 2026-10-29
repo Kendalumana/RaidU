@@ -205,6 +205,33 @@ class ReservasAPITests(APITestCase):
         self.assertEqual(self.client.post('/api/calificaciones/', datos).status_code, 400)
 
 
+    def test_cancelar_viaje_libera_cupos_y_cancelar_reserva_es_idempotente(self):
+        self.assertEqual(self.reservar().status_code, 201)
+        self.client.force_authenticate(self.conductor)
+        self.assertEqual(self.client.patch(
+            f'/api/viajes/{self.viaje.pk}/', {'estado': 'cancelado'}
+        ).status_code, 200)
+        self.viaje.refresh_from_db()
+        self.assertEqual(self.viaje.cupos_disponibles, self.viaje.cupos_totales)
+        self.client.force_authenticate(self.pasajero)
+        reserva = self.client.get('/api/reservas/').data['resultados'][0]
+        self.assertEqual(reserva['estado'], 'cancelada')
+        self.assertEqual(reserva['monto_simulado'], '0.00')
+        self.assertEqual(self.client.delete(f"/api/reservas/{reserva['id']}/").status_code, 204)
+        self.viaje.refresh_from_db()
+        self.assertEqual(self.viaje.cupos_disponibles, self.viaje.cupos_totales)
+
+    def test_reserva_cancelada_conserva_historial_y_protege_viaje(self):
+        reserva = self.reservar()
+        self.assertEqual(reserva.status_code, 201)
+        url = f"/api/reservas/{reserva.data['id']}/"
+        self.assertEqual(self.client.delete(url).status_code, 204)
+        self.assertEqual(self.client.patch(url, {'cupos': 2}).status_code, 400)
+        self.assertEqual(self.client.get(url).data['estado'], 'cancelada')
+        self.client.force_authenticate(self.conductor)
+        self.assertEqual(self.client.delete(f'/api/viajes/{self.viaje.pk}/').status_code, 409)
+
+
 class ReservasConcurrenciaTests(APITransactionTestCase):
     setUp = ReservasAPITests.setUp
 

@@ -8,6 +8,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from usuarios.permisos import es_soporte
 from .models import Viaje
 from .serializers import ViajeSerializer, FiltrosViajeSerializer
 from reservas.services import recalcular_viaje
@@ -37,9 +38,7 @@ def viajes_api(request):
 
     if request.method == 'POST':
 
-        if request.user.groups.filter(
-            name='Soporte'
-        ).exists() and not request.user.is_staff:
+        if es_soporte(request.user):
 
             return Response(
                 {
@@ -106,9 +105,7 @@ def detalle_viaje(request, id):
         return Response(serializer.data)
 
 
-    if request.user.groups.filter(
-        name='Soporte'
-    ).exists() and not request.user.is_staff:
+    if es_soporte(request.user):
 
         return Response(
             {
@@ -191,13 +188,13 @@ def detalle_viaje(request, id):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            ocupados = viaje.reservas.filter(estado='confirmada').aggregate(total=Sum('cupos'))['total'] or 0
+            ocupados = viaje.reservas.filter(estado='confirmada').aggregate(
+                total=Sum('cupos')
+            )['total'] or 0
             cupos_totales = serializer.validated_data.get('cupos_totales', viaje.cupos_totales)
-            disponibles = cupos_totales - ocupados
-            estado = serializer.validated_data.get('estado', viaje.estado)
-            if estado in ['publicado', 'lleno']:
-                estado = 'lleno' if disponibles == 0 else 'publicado'
-            serializer.save(cupos_disponibles=disponibles, estado=estado)
+            if cupos_totales < ocupados:
+                return Response({'detail': 'Los cupos no pueden ser menores a las reservas confirmadas.'}, status=400)
+            serializer.save(cupos_disponibles=cupos_totales - ocupados)
             if viaje.estado == 'cancelado':
                 viaje.reservas.filter(estado='confirmada').update(estado='cancelada', monto_simulado=0)
             recalcular_viaje(viaje)
@@ -211,12 +208,10 @@ def detalle_viaje(request, id):
 
 
     if request.method == 'DELETE':
-        if viaje.cupos_disponibles < viaje.cupos_totales:
-            return Response({'detail': 'No se puede eliminar un viaje con cupos ocupados.'}, status=409)
         try:
             viaje.delete()
         except ProtectedError:
-            return Response({'detail': 'No se puede eliminar un viaje con registros asociados.'}, status=409)
+            return Response({'detail': 'El viaje tiene historial de reservas; cancele el viaje para conservarlo.'}, status=409)
 
         return Response(
             status=status.HTTP_204_NO_CONTENT

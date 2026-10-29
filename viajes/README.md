@@ -36,7 +36,7 @@ ocupados se consultan desde las reservas confirmadas y los disponibles conservan
 la relación `cupos_totales - cupos_ocupados`.
 Cancelar el viaje cancela sus reservas y deja sus montos en cero. Cambiar el costo
 recalcula sus montos. El historial de reservas protege el borrado del viaje.
-Calificaciones se conserva sin cambios para que su responsable lo termine.
+La integración conserva la validación de participantes y permisos de calificaciones.
 
 ## Pruebas
 

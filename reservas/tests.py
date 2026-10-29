@@ -132,17 +132,20 @@ class ReservasAPITests(APITestCase):
         self.client.force_authenticate(self.pasajero)
         self.assertEqual(self.client.get('/api/reservas/').data['resultados'][0]['monto_simulado'], '9000.00')
 
-    def test_cancelar_viaje_cancela_reservas_y_libera_cupos(self):
+    def test_cancelar_viaje_cancela_reservas_y_calificar_exige_participacion(self):
         self.assertEqual(self.reservar().status_code, 201)
+        self.viaje.estado = 'finalizado'
+        self.viaje.save()
+        datos = dict(viaje=self.viaje.pk, calificado=self.conductor.pk, puntaje=5)
+        self.assertEqual(self.client.post('/api/calificaciones/', datos).status_code, 201)
+        self.client.force_authenticate(self.otro)
+        self.assertEqual(self.client.post('/api/calificaciones/', datos).status_code, 400)
+        self.viaje.estado = 'publicado'
+        self.viaje.save()
         self.client.force_authenticate(self.conductor)
         self.assertEqual(self.client.patch(f'/api/viajes/{self.viaje.pk}/', {'estado': 'cancelado'}).status_code, 200)
-        self.viaje.refresh_from_db()
-        self.assertEqual(self.viaje.cupos_disponibles, self.viaje.cupos_totales)
         self.client.force_authenticate(self.pasajero)
-        reserva = self.client.get('/api/reservas/').data['resultados'][0]
-        self.assertEqual(reserva['estado'], 'cancelada')
-        self.assertEqual(reserva['monto_simulado'], '0.00')
-        self.assertEqual(self.client.delete(f"/api/reservas/{reserva['id']}/").status_code, 204)
+        self.assertEqual(self.client.get('/api/reservas/').data['resultados'][0]['estado'], 'cancelada')
 
     def test_paginacion_diez_y_filtros_combinados(self):
         from .models import Reserva
@@ -189,13 +192,41 @@ class ReservasAPITests(APITestCase):
         self.assertEqual(self.client.delete(url).status_code, 400)
         self.assertEqual(self.client.patch(url, {'cupos': 2}).status_code, 400)
 
-    def test_put_y_cancelacion_conservan_historial(self):
+    def test_put_y_calificacion_con_pasajero_cancelado(self):
         reserva = self.reservar()
         self.assertEqual(reserva.status_code, 201)
         url = f"/api/reservas/{reserva.data['id']}/"
         self.assertEqual(self.client.put(url, {'viaje': self.viaje.pk, 'cupos': 2}).status_code, 200)
         self.assertEqual(self.client.delete(url).status_code, 204)
-        self.assertEqual(self.client.patch(url, {'cupos': 1}).status_code, 400)
+        self.viaje.estado = 'finalizado'
+        self.viaje.save()
+        self.client.force_authenticate(self.conductor)
+        datos = dict(viaje=self.viaje.pk, calificado=self.pasajero.pk, puntaje=4)
+        self.assertEqual(self.client.post('/api/calificaciones/', datos).status_code, 400)
+
+
+    def test_cancelar_viaje_libera_cupos_y_cancelar_reserva_es_idempotente(self):
+        self.assertEqual(self.reservar().status_code, 201)
+        self.client.force_authenticate(self.conductor)
+        self.assertEqual(self.client.patch(
+            f'/api/viajes/{self.viaje.pk}/', {'estado': 'cancelado'}
+        ).status_code, 200)
+        self.viaje.refresh_from_db()
+        self.assertEqual(self.viaje.cupos_disponibles, self.viaje.cupos_totales)
+        self.client.force_authenticate(self.pasajero)
+        reserva = self.client.get('/api/reservas/').data['resultados'][0]
+        self.assertEqual(reserva['estado'], 'cancelada')
+        self.assertEqual(reserva['monto_simulado'], '0.00')
+        self.assertEqual(self.client.delete(f"/api/reservas/{reserva['id']}/").status_code, 204)
+        self.viaje.refresh_from_db()
+        self.assertEqual(self.viaje.cupos_disponibles, self.viaje.cupos_totales)
+
+    def test_reserva_cancelada_conserva_historial_y_protege_viaje(self):
+        reserva = self.reservar()
+        self.assertEqual(reserva.status_code, 201)
+        url = f"/api/reservas/{reserva.data['id']}/"
+        self.assertEqual(self.client.delete(url).status_code, 204)
+        self.assertEqual(self.client.patch(url, {'cupos': 2}).status_code, 400)
         self.assertEqual(self.client.get(url).data['estado'], 'cancelada')
         self.client.force_authenticate(self.conductor)
         self.assertEqual(self.client.delete(f'/api/viajes/{self.viaje.pk}/').status_code, 409)

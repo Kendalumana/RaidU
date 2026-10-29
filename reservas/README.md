@@ -2,10 +2,11 @@
 
 ## Alcance de la rama
 
-`feature/reservas-integracion` parte de la versión corregida de viajes `2eb19a0`.
-Recupera el módulo de reservas y conecta capacidad, costo y cancelación de viajes.
-El PR se compara contra `feature/modelos-viajes` para revisar solo esta integración.
-No modifica archivos de calificaciones ni fusiona a main.
+`feature/reservas-integracion` partió de viajes `2eb19a0`. La actualización incorpora
+main y la corrección de `fix/cierre-viajes` (PR #8), conservando calificaciones,
+baja de usuarios, documentación y pruebas integradas. El PR #6 se compara con
+`fix/cierre-viajes` para revisar solo el complemento de reservas. Primero se revisa
+y fusiona el #8; después se cambia el destino del #6 a main y se revisa su diff.
 
 ## Dónde se resuelve cada responsabilidad
 
@@ -92,18 +93,21 @@ No versionar el entorno que contiene los tokens.
 | Cancelar la reserva del otro | 3 y viaje publicado | 6000 | 0 y cancelada |
 | Cancelar titular y repetir cancelación | 4 y viaje publicado | 0 y cancelada | 0 y cancelada |
 
-## Evidencias de esta rama
+## Evidencias y resultados
 
-- Suite completa: 44 pruebas aprobadas en MySQL (15 de reservas).
+- Versión anterior aislada: 44 pruebas aprobadas en MySQL (15 de reservas).
+- Integración actual: 75 pruebas aprobadas en MySQL; resultado en
+  `../docs/evidencia-pruebas.txt`.
 - Postman: 30 solicitudes y 50 aserciones aprobadas, con comprobaciones de cuerpos JSON.
 - Configuración sin incidencias y migraciones sin cambios pendientes.
-- `evidencias/pruebas.txt` conserva el resultado de la suite de esta versión.
+- `evidencias/pruebas.txt` conserva el resultado histórico de la versión aislada.
 - `evidencias/postman.txt` conserva el recorrido HTTP local, sin tokens.
 
-## Pendiente de coordinación
+## Integración y revisión
 
-Calificaciones sigue en desarrollo por su responsable. Cuando esté listo, deberá
-validar que ambos usuarios participaron: conductor o titular de reserva confirmada.
-Este PR deja disponible `viaje.reservas` y los estados confirmada/cancelada, pero no
-cambia ni da por terminada esa validación. La revisión cruzada y la fusión de esta
-integración requieren aprobación de la otra integrante.
+Calificaciones ya valida participantes (conductor o titular de reserva confirmada)
+y rechaza cuentas ajenas y reservas canceladas. Solo el autor edita; autor o
+administrador pueden eliminar. Las pruebas integradas conservan esas reglas.
+Las evidencias actuales de integración se guardan en `../docs/evidencia-pruebas.txt`
+y `../docs/evidencia-postman.txt`; no sumar los resultados históricos a la suite.
+La revisión cruzada y la fusión requieren aprobación de la otra integrante.

@@ -30,9 +30,61 @@ cruzada del código.
 
 - Revisora: yulianaurena.
 - Alcance previsto: usuarios, vehículos y reservas.
-- Fecha, commit, comprobaciones, resultados y enlace de comentario: pendientes.
-- Completar únicamente con la revisión que efectivamente realice. Si ya la hizo,
-  conservar su fecha real y distinguir lectura de código de ejecución de pruebas.
+- Comentario publicado desde su cuenta en el PR #7:
+  https://github.com/Kendalumana/RaidU/pull/7#issuecomment-6503583523
+- Commit mencionado: `f6c518d`. El comentario indica que no se ejecutaron pruebas
+  nuevas. La lectura detallada a continuación fue asistida por el asistente y
+  presentada a Yuliana, quien indicó haberla leído; el comentario publicado no
+  especifica esta asistencia. Fecha de publicación: pendiente de confirmación.
+- El comentario está en el PR #7; queda pendiente su registro en el PR #4 si se
+  desea conservar allí la referencia de cierre.
+
+## Lectura asistida de usuarios, vehículos y reservas
+
+- Fecha: 29 de octubre de 2026.
+- Commit examinado: `f6c518d3587f9fa24bc11b1b3c67ff0880b18883`.
+- Método: lectura de código realizada por el asistente y presentada a Yuliana
+  para su examen. Este registro no afirma que ella haya realizado la lectura
+  independiente ni constituye una aprobación formal.
+- Evidencia: archivos y funciones indicados a continuación. No se ejecutaron
+  pruebas ni Postman durante esta lectura asistida.
+
+### Usuarios
+
+- [RegistroSerializer](../usuarios/serializers.py): `validate_email` normaliza el
+  correo, comprueba el dominio `@ucr.ac.cr` y busca duplicados; `validate` valida
+  la contraseña y `create` crea el usuario y el perfil.
+- [Vistas de usuarios](../usuarios/views.py): `perfil_api` usa el usuario
+  autenticado; `usuarios_api` restringe el listado por rol; `usuario_baja_api`
+  desactiva la cuenta y elimina su token, conservando el historial.
+- Resultado de lectura: se localizaron las reglas descritas. Queda pendiente
+  comprobar sus respuestas con solicitudes y datos ficticios.
+
+### Vehículos
+
+- [Serializador](../vehiculos/serializers.py) y [modelo](../vehiculos/models.py):
+  propietario de solo lectura, validación de capacidad y normalización de placa;
+  el modelo incluye unicidad de placa y capacidad positiva.
+- [Vistas de vehículos](../vehiculos/views.py): `vehiculos_api` asigna el
+  propietario y busca por placa, marca o modelo; `vehiculo_detalle_api` controla
+  permisos y responde 409 ante un borrado protegido.
+- Resultado de lectura: se localizaron las reglas de propiedad, permisos y
+  borrado. La ejecución de los casos correspondientes queda pendiente.
+
+### Reservas
+
+- [Serializador](../reservas/serializers.py) y [vistas](../reservas/views.py):
+  el pasajero proviene del usuario autenticado, se controla el acceso por rol y
+  se impide cambiar el viaje o pasajero de una reserva existente.
+- [Servicios](../reservas/services.py): `guardar_reserva` utiliza una transacción
+  y bloquea el viaje; comprueba viaje propio, duplicados, cupos y cancelación.
+  `recalcular_viaje` reparte el costo entre cupos confirmados y asigna los
+  centavos restantes a la última reserva.
+- Resultado de lectura: se localizaron las reglas descritas. Queda pendiente
+  comprobar en ejecución permisos, reparto, concurrencia y cancelación repetida.
+
+Las evidencias existentes de 84 pruebas y de 75 solicitudes/97 aserciones son
+resultados anteriores; no se atribuyen como ejecuciones de esta lectura.
 
 ## Ramas históricas de trabajo
 

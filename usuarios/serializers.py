@@ -12,11 +12,25 @@ Usuario = get_user_model()
 class UsuarioSerializer(serializers.ModelSerializer):
     telefono = serializers.CharField(source='perfil.telefono', read_only=True)
     activo = serializers.BooleanField(source='is_active', read_only=True)
+    es_admin = serializers.BooleanField(source='is_staff', read_only=True)
+    es_soporte = serializers.SerializerMethodField()
+    rol = serializers.SerializerMethodField()
 
     class Meta:
         model = Usuario
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'telefono', 'activo']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name',
+                  'telefono', 'activo', 'es_admin', 'es_soporte', 'rol']
         read_only_fields = fields
+
+    def get_es_soporte(self, obj):
+        return not obj.is_staff and obj.groups.filter(name='Soporte').exists()
+
+    def get_rol(self, obj):
+        if obj.is_staff:
+            return 'admin'
+        if obj.groups.filter(name='Soporte').exists():
+            return 'soporte'
+        return 'estudiante'
 
 
 class RegistroSerializer(serializers.ModelSerializer):

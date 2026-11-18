@@ -1,0 +1,114 @@
+/* ══════════════════════════════════════════════
+   RaidU – Layout con Sidebar
+   ══════════════════════════════════════════════ */
+
+/* ── Shell ── */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Sidebar ── */
+.app-sidebar {
+  width: 240px;
+  background: #1a1d23;
+  color: #c8cdd3;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1rem;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1030;
+  overflow-y: auto;
+}
+
+.sidebar-brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 1.5rem;
+  padding-left: .25rem;
+}
+
+.sidebar-label {
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  color: #6c757d;
+  text-transform: uppercase;
+  margin-bottom: .5rem;
+  padding-left: .25rem;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  padding: .55rem .75rem;
+  border-radius: .5rem;
+  color: #c8cdd3;
+  text-decoration: none;
+  font-size: .875rem;
+  transition: background .15s, color .15s;
+}
+
+.sidebar-link:hover {
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+}
+
+.sidebar-link.active {
+  background: #0d6efd;
+  color: #fff;
+  font-weight: 600;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+  padding-top: 1rem;
+  font-size: .7rem;
+  color: #6c757d;
+  text-align: center;
+}
+
+/* ── Main area ── */
+.app-main {
+  flex: 1;
+  margin-left: 240px;
+  display: flex;
+  flex-direction: column;
+  background: #f4f6f9;
+  min-height: 100vh;
+}
+
+/* ── Topbar ── */
+.app-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: .75rem 1.5rem;
+  background: #fff;
+  border-bottom: 1px solid #e9ecef;
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+}
+
+/* ── Mobile nav ── */
+.mobile-links {
+  display: none;
+}
+
+/* ── Responsive ── */
+@media (max-width: 767.98px) {
+  .app-sidebar {
+    display: none;
+  }
+  .app-main {
+    margin-left: 0;
+  }
+  .mobile-links {
+    display: flex !important;
+  }
+}

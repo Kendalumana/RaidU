@@ -1,87 +1,173 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
+import ProfileDropdown from './ProfileDropdown.jsx';
+import UcrLogo from './UcrLogo.jsx';
 
 export default function AppLayout() {
-  const { user, rol, logout } = useAuth();
-  const navigate = useNavigate();
+  const { rol } = useAuth();
+  const location = useLocation();
+  const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
 
-  const exit = () => {
-    logout();
-    navigate('/login', { replace: true });
-  };
+  const navItems = [
+    { to: '/', end: true, icon: 'bi-house-door-fill', label: 'Inicio' },
+    { to: '/vehiculos', icon: 'bi-truck-front-fill', label: 'Vehículos' },
+    { to: '/viajes', icon: 'bi-geo-alt-fill', label: 'Viajes & Rides' },
+    { to: '/reservas', icon: 'bi-ticket-perforated-fill', label: 'Reservas' },
+    { to: '/calificaciones', icon: 'bi-star-fill', label: 'Calificaciones' },
+    ...(rol === 'admin' || rol === 'soporte'
+      ? [{ to: '/usuarios', icon: 'bi-people-fill', label: 'Usuarios UCR' }]
+      : []),
+    { to: '/perfil', icon: 'bi-person-circle', label: 'Mi Perfil' },
+  ];
 
-  const rolBadge = {
-    admin: 'bg-danger',
-    soporte: 'bg-warning text-dark',
-    estudiante: 'bg-primary',
-  };
+  // En móvil: Lo propio/personal (Perfil y Calificaciones) se accede desde
+  // el menú superior derecho del avatar, para que no aparezca duplicado en el menú izquierdo.
+  const navItemsMovil = navItems.filter(
+    (item) => item.to !== '/calificaciones' && item.to !== '/perfil'
+  );
 
   return (
     <div className="app-shell">
-      {/* ── Sidebar (escritorio) ── */}
+      {/* ── Sidebar Desktop Minimalista Blanco ── */}
       <aside className="app-sidebar">
         <div className="sidebar-brand">
-          <i className="bi bi-car-front-fill text-primary me-2" />
-          RaidU
+          <UcrLogo />
         </div>
-        <p className="sidebar-label">NAVEGACIÓN</p>
+
+        <p className="sidebar-label">Módulos del Sistema</p>
         <nav className="nav flex-column gap-1" aria-label="Menú principal">
-          <NavLink to="/" end className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-            <i className="bi bi-speedometer2 me-2" />Dashboard
-          </NavLink>
-          <NavLink to="/vehiculos" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-            <i className="bi bi-truck me-2" />Vehículos
-          </NavLink>
-          <NavLink to="/viajes" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-            <i className="bi bi-map me-2" />Viajes
-          </NavLink>
-          <NavLink to="/reservas" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-            <i className="bi bi-bookmark-check me-2" />Reservas
-          </NavLink>
-          <NavLink to="/calificaciones" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-            <i className="bi bi-star me-2" />Calificaciones
-          </NavLink>
-          {(rol === 'admin' || rol === 'soporte') && (
-            <NavLink to="/usuarios" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-              <i className="bi bi-people me-2" />Usuarios
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+            >
+              <i className={`bi ${item.icon}`} />
+              <span>{item.label}</span>
             </NavLink>
-          )}
-          <NavLink to="/perfil" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-            <i className="bi bi-person-gear me-2" />Mi Perfil
-          </NavLink>
+          ))}
         </nav>
-        <div className="sidebar-bottom">UCR – Sede del Pacífico</div>
+
+        <div className="sidebar-bottom">
+          <p className="fw-semibold text-dark mb-0">RaidU v2.0</p>
+          <span>React 19 + Django REST</span>
+        </div>
       </aside>
 
-      {/* ── Área principal ── */}
+      {/* ── Drawer / Menú Lateral para Móvil (Offcanvas limpio) ── */}
+      {menuMovilAbierto && (
+        <div
+          className="d-lg-none position-fixed top-0 start-0 w-100 h-100"
+          style={{ zIndex: 1060, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(3px)' }}
+          onClick={() => setMenuMovilAbierto(false)}
+        >
+          <div
+            className="bg-white h-100 d-flex flex-column p-4 shadow-lg"
+            style={{ width: '82%', maxWidth: 310, animation: 'slideRight 0.25s ease-out' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header del Menú Móvil */}
+            <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+              <UcrLogo compact height={36} />
+              <button
+                type="button"
+                className="btn btn-light rounded-circle p-2 d-flex align-items-center justify-content-center"
+                onClick={() => setMenuMovilAbierto(false)}
+                aria-label="Cerrar menú"
+                style={{ width: 36, height: 36 }}
+              >
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
+
+            <p className="sidebar-label">Navegación</p>
+            <nav className="nav flex-column gap-2">
+              {navItemsMovil.map((item) => {
+                const activo = item.end
+                  ? location.pathname === item.to
+                  : location.pathname.startsWith(item.to);
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    onClick={() => setMenuMovilAbierto(false)}
+                    className="d-flex align-items-center gap-3 px-3 py-2 rounded-3 text-decoration-none fw-medium"
+                    style={{
+                      backgroundColor: activo ? '#0284c7' : 'transparent',
+                      color: activo ? '#ffffff' : '#334155',
+                      fontSize: '0.92rem',
+                    }}
+                  >
+                    <i
+                      className={`bi ${item.icon}`}
+                      style={{
+                        fontSize: '1.2rem',
+                        color: activo ? '#ffffff' : '#64748b',
+                      }}
+                    />
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </nav>
+
+            <div className="mt-auto pt-3 border-top text-center text-secondary small">
+              <span className="fw-semibold text-dark">RaidU UCR</span> • Sede del Pacífico
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Área Principal ── */}
       <div className="app-main">
+        {/* ── Topbar Minimalista ── */}
         <header className="app-topbar">
-          <span className="d-md-none fw-bold text-primary">
-            <i className="bi bi-car-front-fill me-2" />RaidU
-          </span>
-          <div className="ms-auto d-flex align-items-center gap-3">
-            <span className={`badge ${rolBadge[rol] || 'bg-secondary'} text-uppercase`}>{rol}</span>
-            <span className="small text-secondary">
-              <i className="bi bi-person-circle me-1" />
-              {user?.first_name || user?.username || 'Usuario'}
-            </span>
-            <button className="btn btn-outline-danger btn-sm" onClick={exit}>
-              <i className="bi bi-box-arrow-right me-1" />Salir
+          {/* Botón de Menú Hamburguesa + Logo en móvil */}
+          <div className="d-flex align-items-center gap-2 d-lg-none">
+            <button
+              type="button"
+              className="btn btn-light rounded-circle border-0 d-flex align-items-center justify-content-center"
+              onClick={() => setMenuMovilAbierto(true)}
+              style={{ width: 40, height: 40 }}
+              aria-label="Abrir menú de navegación"
+            >
+              <i className="bi bi-list fs-4 text-dark" />
             </button>
+            <UcrLogo compact height={32} />
+          </div>
+
+          {/* Barra de búsqueda interactiva (desktop) */}
+          <div className="topbar-search d-none d-md-block position-relative">
+            <i
+              className="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary"
+              style={{ fontSize: '0.85rem' }}
+            />
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Buscar viajes, rutas, conductores o sedes..."
+              aria-label="Buscar"
+            />
+          </div>
+
+          {/* Menú de perfil a la derecha con dropdown interactivo */}
+          <div className="ms-auto d-flex align-items-center gap-3">
+            <div className="d-none d-sm-flex align-items-center gap-2 px-3 py-1 bg-light rounded-pill border">
+              <span className="spinner-grow spinner-grow-sm text-success" style={{ width: 8, height: 8 }} />
+              <span className="text-secondary small fw-medium" style={{ fontSize: '0.75rem' }}>
+                Sistema Conectado
+              </span>
+            </div>
+
+            <ProfileDropdown />
           </div>
         </header>
 
-        {/* ── Links móviles ── */}
-        <div className="mobile-links d-md-none px-3 pt-3 d-flex gap-2 flex-wrap">
-          <NavLink to="/" end className="btn btn-outline-primary btn-sm">Dashboard</NavLink>
-          <NavLink to="/vehiculos" className="btn btn-outline-primary btn-sm">Vehículos</NavLink>
-          <NavLink to="/viajes" className="btn btn-outline-primary btn-sm">Viajes</NavLink>
-          <NavLink to="/reservas" className="btn btn-outline-primary btn-sm">Reservas</NavLink>
-          <NavLink to="/calificaciones" className="btn btn-outline-primary btn-sm">Calificaciones</NavLink>
-          <NavLink to="/perfil" className="btn btn-outline-primary btn-sm">Perfil</NavLink>
-        </div>
-
-        <main className="container-fluid p-3 p-md-4 p-lg-5">
+        {/* ── Contenido de las páginas: scroll 100% natural sin barras que tapen ── */}
+        <main className="container-fluid p-3 p-md-4 p-xl-5">
           <Outlet />
         </main>
       </div>

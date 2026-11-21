@@ -14,16 +14,25 @@ class UsuarioSerializer(serializers.ModelSerializer):
     activo = serializers.BooleanField(source='is_active', read_only=True)
     es_admin = serializers.BooleanField(source='is_staff', read_only=True)
     es_soporte = serializers.SerializerMethodField()
+    es_conductor = serializers.SerializerMethodField()
+    cantidad_vehiculos = serializers.SerializerMethodField()
     rol = serializers.SerializerMethodField()
 
     class Meta:
         model = Usuario
         fields = ['id', 'username', 'email', 'first_name', 'last_name',
-                  'telefono', 'activo', 'es_admin', 'es_soporte', 'rol']
+                  'telefono', 'activo', 'es_admin', 'es_soporte', 'es_conductor',
+                  'cantidad_vehiculos', 'rol']
         read_only_fields = fields
 
     def get_es_soporte(self, obj):
         return not obj.is_staff and obj.groups.filter(name='Soporte').exists()
+
+    def get_es_conductor(self, obj):
+        return obj.vehiculos.filter(activo=True).exists()
+
+    def get_cantidad_vehiculos(self, obj):
+        return obj.vehiculos.filter(activo=True).count()
 
     def get_rol(self, obj):
         if obj.is_staff:

@@ -58,6 +58,8 @@ export function AuthProvider({ children }) {
     rol: user?.rol || 'estudiante',
     esAdmin: user?.es_admin || false,
     esSoporte: user?.es_soporte || false,
+    esConductor: Boolean(user?.es_conductor),
+    cantidadVehiculos: user?.cantidad_vehiculos || 0,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

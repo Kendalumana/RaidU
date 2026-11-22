@@ -2,13 +2,16 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { api, getError } from '../api/client.js';
 import { Link } from 'react-router-dom';
+import { canAccessUsers, canDeactivateUser } from '../auth/sessionPolicy.js';
 
 export default function UsuariosPage() {
-  const { user: currentUser, rol, esAdmin } = useAuth();
+  const { user: currentUser, esAdmin } = useAuth();
+  const puedeListar = canAccessUsers(currentUser);
 
   /* ── Estado de listado ── */
   const [usuarios, setUsuarios] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
+  const [vehiculosError, setVehiculosError] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -48,6 +51,10 @@ export default function UsuariosPage() {
 
         if (resVehiculos.status === 'fulfilled') {
           setVehiculos(resVehiculos.value.data?.results || []);
+          setVehiculosError(false);
+        } else {
+          setVehiculos([]);
+          setVehiculosError(true);
         }
       } catch (err) {
         setError(getError(err));
@@ -59,13 +66,14 @@ export default function UsuariosPage() {
   );
 
   useEffect(() => {
-    cargar(page);
-  }, [cargar, page]);
+    if (puedeListar) cargar(page);
+  }, [cargar, page, puedeListar]);
 
   /* ═══ Mapa de vehículos agrupados por ID de propietario ═══ */
   const vehiculosPorUsuario = useMemo(() => {
     const mapa = {};
     vehiculos.forEach((v) => {
+      if (!v.activo) return;
       const propId = Number(v.propietario);
       if (!mapa[propId]) mapa[propId] = [];
       mapa[propId].push(v);
@@ -87,7 +95,7 @@ export default function UsuariosPage() {
     try {
       await api.delete(`/usuarios/${u.id}/`);
       setMsg(`La cuenta de "${u.email}" ha sido desactivada exitosamente.`);
-      cargar(page);
+      await cargar(page);
     } catch (err) {
       setError(getError(err));
     }
@@ -129,8 +137,8 @@ export default function UsuariosPage() {
     });
   }, [usuarios, search, filtroEstado, filtroRol, filtroCorreo]);
 
-  /* ═══ Protección de ruta: Solo rol Staff / is_staff (RF2-09 y Requerimiento 2) ═══ */
-  if (!esAdmin && rol !== 'admin') {
+  /* Defensa adicional: Django permite lectura a Admin y Soporte. */
+  if (!puedeListar) {
     return (
       <div className="card border-0 shadow-sm border-start border-4 border-danger">
         <div className="card-body p-5 text-center">
@@ -139,8 +147,7 @@ export default function UsuariosPage() {
           </div>
           <h3 className="h4 fw-bold text-danger">Acceso Restringido</h3>
           <p className="text-secondary max-w-md mx-auto mb-4">
-            Esta sección de administración y moderación está reservada exclusivamente para personal con permisos{' '}
-            <code>is_staff === true</code>. Su perfil actual es de <strong>Estudiante</strong>.
+            El listado de usuarios requiere rol de Administrador o Soporte.
           </p>
           <Link to="/" className="btn btn-primary">
             <i className="bi bi-arrow-left me-1" />Volver al Dashboard
@@ -157,12 +164,14 @@ export default function UsuariosPage() {
         <div>
           <div className="d-flex align-items-center gap-2 mb-1">
             <h1 className="h3 fw-bold mb-0">
-              <i className="bi bi-people-fill me-2 text-danger" />Gestión y Moderación de Usuarios
+              <i className="bi bi-people-fill me-2 text-danger" />{esAdmin ? 'Gestión y Moderación de Usuarios' : 'Consulta de Usuarios'}
             </h1>
-            <span className="badge bg-danger text-uppercase px-2 py-1">is_staff</span>
+            <span className={`badge text-uppercase px-2 py-1 ${esAdmin ? 'bg-danger' : 'bg-warning text-dark'}`}>
+              {esAdmin ? 'Administrador' : 'Solo lectura'}
+            </span>
           </div>
           <p className="text-secondary small mb-0">
-            Administre cuentas universitarias, revise vehículos asociados y desactive cuentas no autorizadas
+            {esAdmin ? 'Administre cuentas universitarias, revise vehículos asociados y desactive cuentas no autorizadas' : 'Consulte las cuentas universitarias. Su rol no permite desactivar usuarios.'}
           </p>
         </div>
 
@@ -284,6 +293,7 @@ export default function UsuariosPage() {
           <div className="d-md-none">
             {usuariosFiltrados.map((u) => {
               const userVehs = vehiculosPorUsuario[u.id] || [];
+              const totalVehiculos = u.cantidad_vehiculos;
               const esInstitucional = u.email && u.email.toLowerCase().endsWith('@ucr.ac.cr');
               const isExpanded = expandedUserId === u.id;
 
@@ -319,7 +329,7 @@ export default function UsuariosPage() {
                         onClick={() => setExpandedUserId(isExpanded ? null : u.id)}
                       >
                         <i className="bi bi-truck me-1" />
-                        {userVehs.length} vehículo{userVehs.length !== 1 ? 's' : ''}
+                        {totalVehiculos ?? '—'} vehículo{totalVehiculos !== 1 ? 's' : ''}
                       </button>
                     </div>
 
@@ -327,8 +337,11 @@ export default function UsuariosPage() {
                     {isExpanded && (
                       <div className="mt-2 p-2 bg-light rounded border small">
                         <strong className="d-block mb-1 text-primary">Vehículos asociados:</strong>
+                        <p className="text-muted mb-1">{vehiculosError ? 'No se pudo cargar el detalle de vehículos.' : 'Detalle parcial: solo se muestra la primera página de vehículos.'}</p>
                         {userVehs.length === 0 ? (
-                          <span className="text-muted fst-italic">Sin vehículos registrados.</span>
+                          <span className="text-muted fst-italic">
+                            {vehiculosError ? 'Detalle no disponible.' : totalVehiculos == null ? 'Total de vehículos no disponible.' : totalVehiculos > 0 ? 'Hay vehículos asociados, pero sus detalles no están cargados en esta página.' : 'Sin vehículos activos registrados.'}
+                          </span>
                         ) : (
                           <ul className="list-unstyled mb-0">
                             {userVehs.map((v) => (
@@ -342,7 +355,7 @@ export default function UsuariosPage() {
                     )}
 
                     {/* Acciones */}
-                    {u.activo && u.id !== currentUser?.id && (
+                    {canDeactivateUser(currentUser, u) && (
                       <div className="mt-3 pt-2 border-top text-end">
                         <button
                           className="btn btn-outline-danger btn-sm"
@@ -378,6 +391,7 @@ export default function UsuariosPage() {
                   <tbody>
                     {usuariosFiltrados.map((u) => {
                       const userVehs = vehiculosPorUsuario[u.id] || [];
+                      const totalVehiculos = u.cantidad_vehiculos;
                       const esInstitucional = u.email && u.email.toLowerCase().endsWith('@ucr.ac.cr');
                       const isExpanded = expandedUserId === u.id;
 
@@ -423,10 +437,10 @@ export default function UsuariosPage() {
                                 userVehs.length > 0 ? 'btn-outline-primary' : 'btn-outline-secondary disabled'
                               }`}
                               onClick={() => setExpandedUserId(isExpanded ? null : u.id)}
-                              title={userVehs.length > 0 ? 'Ver detalles de vehículos' : 'Sin vehículos'}
+                              title={userVehs.length > 0 ? 'Ver detalles de vehículos' : (totalVehiculos > 0 ? 'Hay vehículos asociados, pero el detalle no está cargado' : 'Sin vehículos')}
                             >
                               <i className="bi bi-truck me-1" />
-                              <span className="fw-bold">{userVehs.length}</span>
+                              <span className="fw-bold">{totalVehiculos ?? '—'}</span>
                               <i className={`bi bi-chevron-${isExpanded ? 'up' : 'down'} ms-1`} />
                             </button>
 
@@ -434,6 +448,7 @@ export default function UsuariosPage() {
                             {isExpanded && userVehs.length > 0 && (
                               <div className="p-2 mt-2 bg-light rounded text-start small border">
                                 <strong className="text-primary d-block mb-1">Vehículos de {u.first_name || u.email}:</strong>
+                                <p className="text-muted mb-1">Detalle parcial: solo se muestra la primera página de vehículos.</p>
                                 {userVehs.map((v) => (
                                   <div key={v.id} className="py-1 border-bottom border-white">
                                     <span className="badge bg-dark me-1">{v.placa}</span> {v.marca} {v.modelo} (Cap: {v.capacidad})
@@ -448,9 +463,11 @@ export default function UsuariosPage() {
                             </span>
                           </td>
                           <td className="text-center pe-4">
-                            {u.id === currentUser?.id ? (
+                            {!esAdmin ? (
+                              <span className="text-muted small">Solo lectura</span>
+                            ) : u.id === currentUser?.id ? (
                               <span className="text-muted small fst-italic">Su propia cuenta</span>
-                            ) : u.activo ? (
+                            ) : canDeactivateUser(currentUser, u) ? (
                               <button
                                 className="btn btn-outline-danger btn-sm"
                                 onClick={() => desactivar(u)}

@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mostrarRecuperacion, setMostrarRecuperacion] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,6 +59,12 @@ export default function LoginPage() {
                 required
               />
             </div>
+            <div className="text-end mb-3">
+              <button type="button" className="btn btn-link btn-sm p-0" onClick={() => setMostrarRecuperacion(!mostrarRecuperacion)} aria-expanded={mostrarRecuperacion}>
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+            {mostrarRecuperacion && <div className="alert alert-info small" role="status">La recuperación de contraseña estará disponible próximamente.</div>}
             <button type="submit" className="btn btn-primary w-100" disabled={loading}>
               {loading ? (
                 <><span className="spinner-border spinner-border-sm me-2" />Ingresando...</>

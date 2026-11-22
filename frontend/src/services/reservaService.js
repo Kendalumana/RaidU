@@ -1,17 +1,41 @@
 import { api } from '../api/client.js';
 
 // ─────────────────────────────────────────────
-// LISTAR RESERVAS
+// LISTAR TODAS LAS RESERVAS DEL USUARIO
+// Usado para saber qué viajes ya tienen una reserva
+// y no ofrecerlos de nuevo en "Nueva reserva".
 // ─────────────────────────────────────────────
+export async function listAllMisReservas(pasajeroId = '') {
+  const filtroPasajero = pasajeroId ? { pasajero: pasajeroId } : {};
+  const first = await listReservas({ page: 1, ...filtroPasajero });
+
+  if (first.totalPages <= 1) {
+    return first.items;
+  }
+
+  const pages = await Promise.all(
+    Array.from(
+      { length: first.totalPages - 1 },
+      (_, index) => listReservas({ page: index + 2, ...filtroPasajero })
+    )
+  );
+
+  return [
+    ...first.items,
+    ...pages.flatMap((page) => page.items),
+  ];
+}
 export async function listReservas({
   page = 1,
   estado = '',
   viaje = '',
+  pasajero = '',
 } = {}) {
   const params = { page };
 
   if (estado) params.estado = estado;
   if (viaje) params.viaje = viaje;
+  if (pasajero) params.pasajero = pasajero;
 
   const { data } = await api.get('/reservas/', { params });
 
@@ -63,10 +87,11 @@ export async function deleteReserva(id) {
 // OBTENER TODOS LOS VIAJES
 // Se usan para mostrar información del viaje
 // y llenar el select del formulario.
+// Se ordenan por fecha_hora ascendente.
 // ─────────────────────────────────────────────
 async function getViajesPage(page = 1) {
   const { data } = await api.get('/viajes/', {
-    params: { page },
+    params: { page, ordering: 'fecha_hora' },
   });
 
   return {

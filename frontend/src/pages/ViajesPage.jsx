@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { api, getError } from '../api/client.js';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { listAllViajes, listAllMisReservas } from '../services/reservaService.js';
 
 /* ── Sedes oficiales del sistema RaidU (Viaje.Sede) ── */
 const SEDES = [
@@ -21,9 +22,22 @@ const ESTADOS = [
 ];
 
 const sedeLabel = (val) => SEDES.find((s) => s.value === val)?.label || val;
-const estadoBadge = (val) => ESTADOS.find((e) => e.value === val) || { label: val, color: 'secondary' };
+
+export const esPasado = (v) => Boolean(v?.fecha_hora && new Date(v.fecha_hora) <= new Date());
+
+export const getEstadoEfectivo = (v) => {
+  if (!v) return 'publicado';
+  if (typeof v === 'string') return v;
+  return v.estado;
+};
+
+const estadoBadge = (val) => {
+  const estado = typeof val === 'string' ? val : getEstadoEfectivo(val);
+  return ESTADOS.find((e) => e.value === estado) || { label: estado, color: 'secondary' };
+};
 
 const FORM_VACIO = {
+  nombre: '',
   vehiculo: '',
   sede_origen: '',
   sede_destino: '',
@@ -35,7 +49,9 @@ const FORM_VACIO = {
 };
 
 export default function ViajesPage() {
-  const { user, esAdmin } = useAuth();
+  const { user, esAdmin, esSoporte } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   /* ── estado listado ── */
   const [viajes, setViajes] = useState([]);
@@ -60,6 +76,7 @@ export default function ViajesPage() {
   const [misVehiculos, setMisVehiculos] = useState([]);
   const [loadingVeh, setLoadingVeh] = useState(true);
   const [tieneVehiculos, setTieneVehiculos] = useState(false);
+  const [misReservasViajesIds, setMisReservasViajesIds] = useState(new Set());
 
   /* ── formulario ── */
   const [form, setForm] = useState({ ...FORM_VACIO });
@@ -77,48 +94,126 @@ export default function ViajesPage() {
     setLoadingVeh(true);
     try {
       const { data } = await api.get('/vehiculos/?page=1');
-      const lista = data.results || [];
+      const paginas = await Promise.all(Array.from({ length: Math.max(0, (data.total_pages || 1) - 1) }, (_, i) => api.get(`/vehiculos/?page=${i + 2}`)));
+      const lista = [...(data.results || []), ...paginas.flatMap((pagina) => pagina.data.results || [])];
       // Filtrar vehículos activos pertenecientes al usuario actual
       const propios = lista.filter(
         (v) => v.activo !== false && (user?.id ? Number(v.propietario) === Number(user?.id) : true)
       );
       setMisVehiculos(propios);
       setTieneVehiculos(propios.length > 0);
-    } catch {
+    } catch (err) {
       setMisVehiculos([]);
       setTieneVehiculos(false);
+      setError(`No se pudieron cargar los vehículos: ${getError(err)}`);
     } finally {
       setLoadingVeh(false);
     }
   }, [user?.id]);
 
-  /* ═══ 2. Cargar viajes con filtros y paginación del backend ═══ */
+  /* ═══ 2. Cargar viajes: Admin ve todos; usuario regular solo los relacionales a su perfil ═══ */
   const cargarViajes = useCallback(
     async (p = 1) => {
       setLoading(true);
       setError('');
       try {
-        const params = new URLSearchParams({ page: p });
-        Object.entries(filtros).forEach(([k, v]) => {
-          if (v) params.set(k, v);
-        });
-        const { data } = await api.get(`/viajes/?${params}`);
-        setViajes(data.resultados || []);
-        setPage(data.pagina_actual || p);
-        setTotalPages(data.total_paginas || 1);
-        setTotalCount(data.total_registros || 0);
+        if (esAdmin) {
+          // Administrador: consulta y pagina todos los viajes del sistema
+          const params = new URLSearchParams({ page: p });
+          Object.entries(filtros).forEach(([k, v]) => {
+            if (v) params.set(k, v);
+          });
+          const { data } = await api.get(`/viajes/?${params}`);
+          setViajes(data.resultados || []);
+          setPage(data.pagina_actual || p);
+          setTotalPages(data.total_paginas || 1);
+          setTotalCount(data.total_registros || 0);
+        } else {
+          // Estudiante / Conductor: solo viajes relacionales a su perfil
+          // (Viajes que conduce + Viajes donde tiene reserva)
+          const [todos, itemsReservas] = await Promise.all([
+            listAllViajes(),
+            listAllMisReservas(user?.id),
+          ]);
+          const idsReservados = new Set(
+            itemsReservas
+              .filter((r) => r.estado === 'confirmada')
+              .map((r) => Number(r.viaje))
+          );
+          setMisReservasViajesIds(idsReservados);
+
+          let relacionales = todos.filter((v) => {
+            const soyConductor = user?.id && Number(v.conductor) === Number(user.id);
+            const soyPasajero = idsReservados.has(Number(v.id));
+            return soyConductor || soyPasajero;
+          });
+
+          // Filtros de sede, estado o fecha
+          if (filtros.sede_origen) {
+            relacionales = relacionales.filter((v) => v.sede_origen === filtros.sede_origen);
+          }
+          if (filtros.sede_destino) {
+            relacionales = relacionales.filter((v) => v.sede_destino === filtros.sede_destino);
+          }
+          if (filtros.estado) {
+            relacionales = relacionales.filter((v) => getEstadoEfectivo(v) === filtros.estado);
+          }
+          if (filtros.fecha) {
+            relacionales = relacionales.filter((v) => v.fecha_hora?.startsWith(filtros.fecha));
+          }
+
+          const descendente = filtros.ordering.startsWith('-');
+          const campo = filtros.ordering.replace(/^-/, '');
+          relacionales.sort((a, b) => {
+            const diferencia = campo === 'costo_total'
+              ? Number(a.costo_total) - Number(b.costo_total)
+              : new Date(a.fecha_hora) - new Date(b.fecha_hora);
+            return (descendente ? -diferencia : diferencia) || a.id - b.id;
+          });
+
+          setViajes(relacionales);
+          setPage(1);
+          setTotalPages(1);
+          setTotalCount(relacionales.length);
+        }
       } catch (err) {
         setError(getError(err));
       } finally {
         setLoading(false);
       }
     },
-    [filtros]
+    [filtros, esAdmin, user?.id]
+  );
+
+  const cargarMisReservas = useCallback(async () => {
+    try {
+      const items = await listAllMisReservas(user?.id);
+      const ids = new Set(
+        items
+          .filter((r) => r.estado === 'confirmada')
+          .map((r) => Number(r.viaje))
+      );
+      setMisReservasViajesIds(ids);
+    } catch (err) {
+      setMisReservasViajesIds(new Set());
+      setError(`No se pudieron cargar tus reservas: ${getError(err)}`);
+    }
+  }, [user?.id]);
+
+  const esParticipante = useCallback(
+    (viaje) => {
+      if (!user?.id || !viaje) return false;
+      const esConductor = Number(viaje.conductor) === Number(user.id);
+      const esPasajero = misReservasViajesIds.has(Number(viaje.id));
+      return esConductor || esPasajero;
+    },
+    [user?.id, misReservasViajesIds]
   );
 
   useEffect(() => {
     cargarVehiculos();
-  }, [cargarVehiculos]);
+    cargarMisReservas();
+  }, [cargarVehiculos, cargarMisReservas]);
 
   useEffect(() => {
     cargarViajes();
@@ -167,7 +262,7 @@ export default function ViajesPage() {
   };
 
   const abrirCrear = () => {
-    if (!tieneVehiculos) return;
+    if (esSoporte || !tieneVehiculos) return;
     const primerVehiculo = misVehiculos[0];
     const cap = primerVehiculo ? primerVehiculo.capacidad : 5;
     setMaxCupos(cap);
@@ -181,11 +276,26 @@ export default function ViajesPage() {
     setFormErrors({});
   };
 
+  useEffect(() => {
+    if (loadingVeh || searchParams.get('nuevo') !== 'true') return;
+    const solicitado = misVehiculos.find((v) => String(v.id) === searchParams.get('vehiculo'));
+    if (!esSoporte && misVehiculos.length > 0) {
+      const elegido = solicitado || misVehiculos[0];
+      setMaxCupos(elegido.capacidad);
+      setForm({ ...FORM_VACIO, vehiculo: String(elegido.id), cupos_totales: 1 });
+      setEditId(null);
+      setFormErrors({});
+      setShowForm(true);
+    }
+    setSearchParams({}, { replace: true });
+  }, [loadingVeh, misVehiculos, esSoporte, searchParams, setSearchParams]);
+
   const abrirEditar = (v) => {
     const veh = misVehiculos.find((x) => x.id === v.vehiculo);
     const cap = veh ? veh.capacidad : v.cupos_totales || 5;
     setMaxCupos(cap);
     setForm({
+      nombre: v.nombre || '',
       vehiculo: String(v.vehiculo),
       sede_origen: v.sede_origen,
       sede_destino: v.sede_destino,
@@ -256,6 +366,7 @@ export default function ViajesPage() {
     setMsg('');
     try {
       const payload = {
+        nombre: form.nombre.trim(),
         vehiculo: Number(form.vehiculo),
         sede_origen: form.sede_origen,
         sede_destino: form.sede_destino,
@@ -329,7 +440,10 @@ export default function ViajesPage() {
   };
 
   const esConductor = (v) => user?.id && Number(v.conductor) === Number(user?.id);
-  const puedeModificar = (v) => (esConductor(v) || esAdmin) && ['publicado', 'lleno'].includes(v.estado);
+  const puedeModificar = (v) =>
+    !esSoporte && (esConductor(v) || esAdmin) &&
+    ['publicado', 'lleno'].includes(v.estado) &&
+    !esPasado(v);
 
   return (
     <>
@@ -337,10 +451,13 @@ export default function ViajesPage() {
       <div className="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
         <div>
           <h1 className="h3 fw-bold mb-1">
-            <i className="bi bi-map me-2 text-success" />Catálogo de Viajes
+            <i className="bi bi-map me-2 text-success" />
+            {esAdmin ? 'Catálogo General de Viajes (Admin)' : 'Mis Viajes'}
           </h1>
           <p className="text-secondary small mb-0">
-            Encuentre u ofrezca transporte compartido seguro entre sedes de la Universidad de Costa Rica
+            {esAdmin
+              ? 'Control y catálogo de todos los viajes universitarios registrados en el sistema.'
+              : 'Viajes relacionados con tu perfil institucional (conducidos por ti o donde tienes reserva).'}
           </p>
         </div>
 
@@ -352,7 +469,7 @@ export default function ViajesPage() {
             <i className="bi bi-funnel me-1" />
             {showFiltros ? 'Ocultar filtros' : 'Filtros'}
           </button>
-          {!showForm && (
+          {!esSoporte && !showForm && (
             <button
               className="btn btn-success shadow-sm"
               onClick={abrirCrear}
@@ -382,7 +499,7 @@ export default function ViajesPage() {
       )}
 
       {/* ── Aviso cuando el usuario no tiene vehículos registrados (RF2 requerimiento) ── */}
-      {!loadingVeh && !tieneVehiculos && (
+      {!esSoporte && !loadingVeh && !tieneVehiculos && (
         <div className="card border-0 shadow-sm border-start border-4 border-warning mb-4">
           <div className="card-body p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div className="d-flex align-items-center gap-3">
@@ -514,6 +631,11 @@ export default function ViajesPage() {
           <div className="card-body p-4">
             <form onSubmit={guardar}>
               <div className="row g-3">
+                <div className="col-12">
+                  <label htmlFor="nombre" className="form-label fw-semibold">Nombre del viaje (opcional)</label>
+                  <input id="nombre" name="nombre" className="form-control" maxLength={100} value={form.nombre} onChange={change} disabled={saving} placeholder="Ej: Viaje a la U por la mañana" />
+                  <div className="form-text">Ayuda a reconocer este viaje en las reservas y calificaciones.</div>
+                </div>
                 {/* Selector de vehículo */}
                 <div className="col-md-6 col-lg-4">
                   <label htmlFor="vehiculo" className="form-label fw-semibold">
@@ -741,11 +863,15 @@ export default function ViajesPage() {
             <div className="bg-light rounded-circle d-inline-flex p-4 mb-3">
               <i className="bi bi-map text-secondary fs-1" />
             </div>
-            <h5 className="fw-semibold text-secondary">No se encontraron viajes</h5>
+            <h5 className="fw-semibold text-secondary">
+              {esAdmin ? 'No se encontraron viajes' : 'No tienes viajes relacionados a tu perfil'}
+            </h5>
             <p className="text-muted small mb-3">
               {Object.values(filtros).some(Boolean)
                 ? 'No hay viajes que coincidan con los filtros seleccionados.'
-                : 'Aún no se han publicado viajes en el sistema.'}
+                : esAdmin
+                  ? 'Aún no se han publicado viajes en el sistema.'
+                  : 'Aquí aparecerán los viajes que publiques como conductor o en los que reserves un cupo como pasajero.'}
             </p>
             {Object.values(filtros).some(Boolean) && (
               <button className="btn btn-outline-primary btn-sm" onClick={limpiarFiltros}>
@@ -768,7 +894,9 @@ export default function ViajesPage() {
           {/* Cards responsivas de viajes */}
           <div className="row g-3">
             {viajes.map((v) => {
-              const est = estadoBadge(v.estado);
+              const est = estadoBadge(v);
+              const pasado = esPasado(v);
+              const efectivo = getEstadoEfectivo(v);
               const expandido = detalleId === v.id;
               const mio = esConductor(v);
 
@@ -785,11 +913,23 @@ export default function ViajesPage() {
                         <div className="d-flex justify-content-between align-items-start mb-2">
                           <div className="d-flex align-items-center gap-2 flex-wrap">
                             <span className={`badge bg-${est.color}`}>{est.label}</span>
-                            {mio && (
-                              <span className="badge bg-success bg-opacity-10 text-success">
-                                <i className="bi bi-person-check-fill me-1" />Mi viaje
+                            {pasado && !['cancelado', 'finalizado'].includes(v.estado) && (
+                              <span
+                                className="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25"
+                                title="La fecha y hora de este viaje ya transcurrieron"
+                              >
+                                <i className="bi bi-clock-history me-1" />Hora de salida transcurrida
                               </span>
                             )}
+                            {mio ? (
+                              <span className="badge bg-success bg-opacity-10 text-success">
+                                <i className="bi bi-person-check-fill me-1" />Conductor (Mi viaje)
+                              </span>
+                            ) : misReservasViajesIds.has(Number(v.id)) ? (
+                              <span className="badge bg-primary bg-opacity-10 text-primary">
+                                <i className="bi bi-bookmark-check-fill me-1" />Pasajero (Mi reserva)
+                              </span>
+                            ) : null}
                             <span className="text-muted small">#{v.id}</span>
                           </div>
 
@@ -798,6 +938,7 @@ export default function ViajesPage() {
                           </span>
                         </div>
 
+                        <h3 className="h6 fw-bold">{v.nombre || `${sedeLabel(v.sede_origen)} → ${sedeLabel(v.sede_destino)}`}</h3>
                         {/* Ruta: Origen -> Destino */}
                         <div className="mb-3">
                           <div className="d-flex align-items-center gap-2 mb-1">
@@ -835,7 +976,15 @@ export default function ViajesPage() {
                           </div>
                           <div className="col-6 text-end">
                             <i className="bi bi-people-fill me-1 text-primary" />
-                            <strong className="text-dark">{v.cupos_disponibles}</strong> / {v.cupos_totales} cupos
+                            {efectivo === 'finalizado' || efectivo === 'cancelado' ? (
+                              <span className="badge bg-secondary bg-opacity-25 text-dark fw-normal">
+                                {efectivo === 'cancelado' ? 'Viaje cancelado' : 'Viaje finalizado'}
+                              </span>
+                            ) : (
+                              <>
+                                <strong className="text-dark">{v.cupos_disponibles}</strong> / {v.cupos_totales} cupos
+                              </>
+                            )}
                           </div>
                         </div>
 
@@ -879,7 +1028,7 @@ export default function ViajesPage() {
                             </button>
                           )}
 
-                          {esConductor(v) && v.estado === 'publicado' && (
+                          {!esSoporte && (esConductor(v) || esAdmin) && ['publicado', 'lleno'].includes(v.estado) && (
                             <button
                               className="btn btn-outline-info btn-sm"
                               onClick={() => cambiarEstado(v, 'en_curso')}
@@ -889,13 +1038,25 @@ export default function ViajesPage() {
                             </button>
                           )}
 
-                          {esConductor(v) && v.estado === 'en_curso' && (
+                          {!esSoporte && (esConductor(v) || esAdmin) && v.estado === 'en_curso' && (
                             <button
                               className="btn btn-outline-secondary btn-sm"
                               onClick={() => cambiarEstado(v, 'finalizado')}
                               title="Finalizar viaje"
                             >
                               <i className="bi bi-check-circle me-1" />Finalizar
+                            </button>
+                          )}
+
+                          {/* Calificar viaje si está finalizado Y el usuario participó */}
+                          {(efectivo === 'finalizado') && esParticipante(v) && (
+                            <button
+                              className="btn btn-outline-warning btn-sm text-dark d-inline-flex align-items-center gap-1"
+                              onClick={() => navigate(`/calificaciones?viaje=${v.id}`)}
+                              title="Calificar a los participantes de este viaje finalizado"
+                            >
+                              <i className="bi bi-star-fill text-warning" />
+                              <span>Calificar</span>
                             </button>
                           )}
 
@@ -909,7 +1070,7 @@ export default function ViajesPage() {
                             </button>
                           )}
 
-                          {(esConductor(v) || esAdmin) && v.estado === 'publicado' && (
+                          {(esConductor(v) || esAdmin) && v.estado === 'publicado' && !pasado && (
                             <button
                               className="btn btn-outline-danger btn-sm"
                               onClick={() => eliminarViaje(v)}

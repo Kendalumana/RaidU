@@ -4,6 +4,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { getError } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -14,6 +15,7 @@ import {
   addReserva,
   cancelReserva,
   deleteReserva,
+  listAllMisReservas,
   listAllViajes,
   listReservas,
   updateReserva,
@@ -30,6 +32,29 @@ const estilosEstado = {
   pendiente: 'text-bg-warning',
   confirmada: 'text-bg-success',
   cancelada: 'text-bg-danger',
+  en_curso: 'text-bg-info text-dark',
+  completada: 'text-bg-secondary',
+};
+
+export const esPasadoViaje = (v) => Boolean(v?.fecha_hora && new Date(v.fecha_hora) <= new Date());
+
+export const getEstadoReservaEfectivo = (reserva, viaje) => {
+  if (reserva.estado === 'cancelada') {
+    return { label: 'Cancelada', valor: 'cancelada' };
+  }
+  if (!viaje) {
+    return { label: reserva.estado, valor: reserva.estado };
+  }
+  if (viaje.estado === 'cancelado') {
+    return { label: 'Viaje cancelado', valor: 'cancelada' };
+  }
+  if (viaje.estado === 'en_curso') {
+    return { label: 'En curso', valor: 'en_curso' };
+  }
+  if (viaje.estado === 'finalizado' || esPasadoViaje(viaje)) {
+    return { label: 'Completada', valor: 'completada' };
+  }
+  return { label: 'Confirmada', valor: 'confirmada' };
 };
 
 function formatoDinero(valor) {
@@ -40,16 +65,29 @@ function formatoDinero(valor) {
   }).format(Number(valor || 0));
 }
 
+function formatFechaCorta(fechaIso) {
+  if (!fechaIso) return '';
+  const d = new Date(fechaIso);
+  return d.toLocaleDateString('es-CR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export default function ReservasPage() {
   const {
     user,
     esSoporte,
   } = useAuth();
+  const navigate = useNavigate();
 
   // ───────────────────────────────────────────
   // ESTADOS
   // ───────────────────────────────────────────
   const [reservas, setReservas] = useState([]);
+  const [misReservasTodas, setMisReservasTodas] = useState([]);
   const [viajes, setViajes] = useState([]);
 
   const [cargando, setCargando] = useState(true);
@@ -65,7 +103,6 @@ export default function ReservasPage() {
   const [total, setTotal] = useState(0);
 
   const [filtros, setFiltros] = useState({
-    estado: '',
     viaje: '',
   });
 
@@ -86,19 +123,59 @@ export default function ReservasPage() {
   );
 
   // ───────────────────────────────────────────
-  // CARGAR RESERVAS
+  // VIAJES RESERVADOS POR EL USUARIO ACTUAL
+  // ───────────────────────────────────────────
+  const viajesReservadosIds = useMemo(() => {
+    return new Set(
+      misReservasTodas
+        .filter((r) => !user?.id || Number(r.pasajero) === Number(user.id))
+        .map((r) => Number(r.viaje))
+    );
+  }, [misReservasTodas, user]);
+
+  // Viajes en los que el usuario tiene reservas activas (para el filtro)
+  const viajesConMisReservas = useMemo(() => {
+    const idsViajes = new Set(
+      misReservasTodas
+        .filter(
+          (r) =>
+            (!user?.id || Number(r.pasajero) === Number(user.id)) &&
+            r.estado !== 'cancelada'
+        )
+        .map((r) => Number(r.viaje))
+    );
+    return viajes.filter((v) => idsViajes.has(Number(v.id)));
+  }, [viajes, misReservasTodas, user]);
+
+  // ───────────────────────────────────────────
+  // CARGAR RESERVAS (SOLO PROPIAS Y ACTIVAS)
   // ───────────────────────────────────────────
   const recargar = useCallback(async () => {
     setCargando(true);
     setError('');
 
     try {
-      const resultado = await listReservas({
+      const params = {
         page: pagina,
-        ...filtros,
-      });
+        estado: 'confirmada', // Solo reservas confirmadas (las canceladas ni aparecen)
+        ...(filtros.viaje ? { viaje: filtros.viaje } : {}),
+      };
 
-      setReservas(resultado.items);
+      if (user?.id) {
+        params.pasajero = user.id; // Solo las que hizo el usuario
+      }
+
+      const [resultado, todas] = await Promise.all([
+        listReservas(params),
+        listAllMisReservas(user?.id).catch(() => []),
+      ]);
+
+      const activas = (resultado.items || []).filter(
+        (r) => r.estado !== 'cancelada'
+      );
+
+      setReservas(activas);
+      setMisReservasTodas(todas);
       setPagina(resultado.page);
       setTotalPaginas(resultado.totalPages);
       setTotal(resultado.total);
@@ -109,7 +186,7 @@ export default function ReservasPage() {
     } finally {
       setCargando(false);
     }
-  }, [pagina, filtros]);
+  }, [pagina, filtros, user]);
 
   useEffect(() => {
     recargar();
@@ -122,7 +199,10 @@ export default function ReservasPage() {
     async function cargarViajes() {
       try {
         const lista = await listAllViajes();
-        setViajes(lista);
+        const listaOrdenada = [...lista].sort(
+          (a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora)
+        );
+        setViajes(listaOrdenada);
       } catch (e) {
         setError(getError(e));
       }
@@ -203,10 +283,6 @@ export default function ReservasPage() {
 
   // ───────────────────────────────────────────
   // DELETE
-  //
-  // IMPORTANTE:
-  // Django conserva la reserva como cancelada
-  // para mantener el historial.
   // ───────────────────────────────────────────
   const eliminar = async (reserva) => {
     setError('');
@@ -216,7 +292,7 @@ export default function ReservasPage() {
       await deleteReserva(reserva.id);
 
       setExito(
-        `Reserva #${reserva.id} eliminada/cancelada correctamente.`
+        `Reserva #${reserva.id} eliminada correctamente.`
       );
 
       if (editando?.id === reserva.id) {
@@ -261,28 +337,20 @@ export default function ReservasPage() {
   };
 
   const mensajeVacio = useMemo(() => {
-    if (filtros.estado || filtros.viaje) {
+    if (filtros.viaje) {
       return {
         titulo: 'No se encontraron reservas',
         texto:
-          'No hay reservas que coincidan con los filtros seleccionados.',
-      };
-    }
-
-    if (user?.rol === 'estudiante') {
-      return {
-        titulo: 'No tienes reservas',
-        texto:
-          'Cuando reserves un viaje, aparecerá en esta sección.',
+          'No hay reservas activas que coincidan con el viaje seleccionado.',
       };
     }
 
     return {
-      titulo: 'No hay reservas registradas',
+      titulo: 'No tienes reservas activas',
       texto:
-        'Actualmente no existen reservas en el sistema.',
+        'Cuando reserves un viaje disponible, aparecerá en esta sección.',
     };
-  }, [filtros, user]);
+  }, [filtros.viaje]);
 
 
   return (
@@ -350,6 +418,7 @@ export default function ReservasPage() {
           reserva={editando}
           viajes={viajes}
           userId={user?.id}
+          viajesReservadosIds={viajesReservadosIds}
           onSave={guardar}
           onCancel={() => setEditando(null)}
           saving={guardando}
@@ -373,57 +442,35 @@ export default function ReservasPage() {
 
             <div className="d-flex flex-wrap gap-2">
 
-              {/* Estado */}
-              <select
-                className="form-select"
-                name="estado"
-                value={filtros.estado}
-                onChange={actualizarFiltro}
-                style={{ minWidth: 170 }}
-              >
-                <option value="">
-                  Todos los estados
-                </option>
-
-                <option value="confirmada">
-                  Confirmadas
-                </option>
-
-                <option value="cancelada">
-                  Canceladas
-                </option>
-              </select>
-
               {/* Viaje */}
               <select
                 className="form-select"
                 name="viaje"
                 value={filtros.viaje}
                 onChange={actualizarFiltro}
-                style={{ minWidth: 180 }}
+                style={{ minWidth: 260 }}
               >
                 <option value="">
-                  Todos los viajes
+                  Todos mis viajes reservados
                 </option>
 
-                {viajes.map((viaje) => (
+                {viajesConMisReservas.map((viaje) => (
                   <option
                     key={viaje.id}
                     value={viaje.id}
                   >
-                    Viaje #{viaje.id}
+                    {viaje.nombre ? `${viaje.nombre} — ` : ''}
+                    #{viaje.id} · {formatFechaCorta(viaje.fecha_hora)} · {nombresSede[viaje.sede_origen] || viaje.sede_origen} → {nombresSede[viaje.sede_destino] || viaje.sede_destino}
                   </option>
                 ))}
               </select>
 
-              {(filtros.estado ||
-                filtros.viaje) && (
+              {filtros.viaje && (
                 <button
                   type="button"
                   className="btn btn-outline-secondary"
                   onClick={() => {
                     setFiltros({
-                      estado: '',
                       viaje: '',
                     });
 
@@ -510,6 +557,9 @@ export default function ReservasPage() {
 
                     const viaje =
                       viajesPorId[reserva.viaje];
+                    const estadoRes = getEstadoReservaEfectivo(reserva, viaje);
+                    const esPasada = Boolean(viaje && (viaje.estado === 'finalizado' || esPasadoViaje(viaje)));
+                    const esEnCurso = Boolean(viaje && viaje.estado === 'en_curso');
 
                     return (
                       <tr key={reserva.id}>
@@ -522,27 +572,27 @@ export default function ReservasPage() {
                         {/* VIAJE */}
                         <td>
                           <div className="fw-semibold">
-                            Viaje #{reserva.viaje}
+                            {viaje?.nombre || (viaje ? `${nombresSede[viaje.sede_origen] || viaje.sede_origen} → ${nombresSede[viaje.sede_destino] || viaje.sede_destino}` : `Viaje #${reserva.viaje}`)}
                           </div>
 
                           {viaje && (
-                            <small className="text-secondary">
-                              {nombresSede[
-                                viaje.sede_origen
-                              ] ||
-                                viaje.sede_origen}
-                              {' → '}
-                              {nombresSede[
-                                viaje.sede_destino
-                              ] ||
-                                viaje.sede_destino}
-                            </small>
+                            <div className="small text-secondary">
+                              <span className="d-block text-dark fw-medium">
+                                <i className="bi bi-clock me-1 text-primary" />
+                                {formatFechaCorta(viaje.fecha_hora)}
+                              </span>
+                              <span>
+                                {nombresSede[viaje.sede_origen] || viaje.sede_origen}
+                                {' → '}
+                                {nombresSede[viaje.sede_destino] || viaje.sede_destino}
+                              </span>
+                            </div>
                           )}
                         </td>
 
                         {/* PASAJERO */}
                         <td>
-                          #{reserva.pasajero}
+                          {reserva.pasajero_correo || 'Correo no disponible'}
                         </td>
 
                         {/* CUPOS */}
@@ -564,13 +614,23 @@ export default function ReservasPage() {
                           <span
                             className={`badge ${
                               estilosEstado[
-                                reserva.estado
+                                estadoRes.valor
                               ] ||
                               'text-bg-secondary'
                             }`}
                           >
-                            {reserva.estado}
+                            {estadoRes.label}
                           </span>
+                          {esPasada && viaje?.estado !== 'cancelado' && (
+                            <div className="small text-muted mt-1">
+                              <i className="bi bi-clock-history me-1" />Viaje concluido
+                            </div>
+                          )}
+                          {esEnCurso && (
+                            <div className="small text-info mt-1">
+                              <i className="bi bi-geo-alt-fill me-1" />En recorrido
+                            </div>
+                          )}
                         </td>
 
                         {/* FECHA */}
@@ -588,25 +648,22 @@ export default function ReservasPage() {
                         <td className="text-end text-nowrap">
 
                           {!esSoporte &&
-                            reserva.estado ===
-                              'confirmada' && (
+                            reserva.estado === 'confirmada' &&
+                            !esPasada &&
+                            !esEnCurso && (
                               <>
-
                                 {/* EDITAR */}
                                 <button
                                   type="button"
                                   className="btn btn-outline-primary btn-sm me-2"
                                   onClick={() => {
-                                    setEditando(
-                                      reserva
-                                    );
-
+                                    setEditando(reserva);
                                     window.scrollTo({
                                       top: 0,
-                                      behavior:
-                                        'smooth',
+                                      behavior: 'smooth',
                                     });
                                   }}
+                                  title="Editar cupos reservados"
                                 >
                                   <i className="bi bi-pencil me-1" />
                                   Editar
@@ -620,8 +677,9 @@ export default function ReservasPage() {
                                     setConfirmacion({
                                       tipo: 'cancelar',
                                       reserva,
-                                  })
+                                    })
                                   }
+                                  title="Cancelar reserva"
                                 >
                                   <i className="bi bi-x-circle me-1" />
                                   Cancelar
@@ -637,6 +695,7 @@ export default function ReservasPage() {
                                       reserva,
                                     })
                                   }
+                                  title="Eliminar reserva"
                                 >
                                   <i className="bi bi-trash me-1" />
                                   Eliminar
@@ -644,16 +703,34 @@ export default function ReservasPage() {
                               </>
                             )}
 
-                          {reserva.estado ===
-                            'cancelada' && (
+                          {/* Calificar si la reserva es de un viaje completado/pasado */}
+                          {esPasada && viaje?.estado !== 'cancelado' && (
+                            <button
+                              type="button"
+                              className="btn btn-outline-warning btn-sm text-dark d-inline-flex align-items-center gap-1"
+                              onClick={() => navigate(`/calificaciones?viaje=${reserva.viaje}`)}
+                              title="Calificar a los participantes de este viaje completado"
+                            >
+                              <i className="bi bi-star-fill text-warning" />
+                              <span>Calificar</span>
+                            </button>
+                          )}
+
+                          {/* Si el viaje está en curso */}
+                          {esEnCurso && (
+                            <span className="badge bg-info bg-opacity-25 text-dark small py-1 px-2">
+                              <i className="bi bi-car-front-fill me-1" />En recorrido
+                            </span>
+                          )}
+
+                          {reserva.estado === 'cancelada' && (
                             <span className="small text-secondary">
-                              Sin acciones
+                              Cancelada
                             </span>
                           )}
 
                           {esSoporte &&
-                            reserva.estado !==
-                              'cancelada' && (
+                            reserva.estado !== 'cancelada' && (
                               <span className="small text-secondary">
                                 Solo lectura
                               </span>

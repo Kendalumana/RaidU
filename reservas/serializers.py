@@ -6,6 +6,7 @@ from .services import guardar_reserva
 
 class ReservaSerializer(serializers.ModelSerializer):
     cupos = serializers.IntegerField(min_value=1, max_value=32767)
+    pasajero_correo = serializers.EmailField(source='pasajero.email', read_only=True)
 
     class Meta:
         model = Reserva

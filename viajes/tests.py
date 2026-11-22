@@ -88,6 +88,35 @@ class ViajesAPITests(APITestCase):
     def crear(self, **cambios):
         return self.client.post('/api/viajes/', self.datos | cambios, format='json')
 
+    def test_participantes_solo_para_integrantes_de_viaje_finalizado(self):
+        from reservas.models import Reserva
+
+        self.usuario.first_name = 'Ana'
+        self.usuario.email = 'ana@ucr.ac.cr'
+        self.usuario.save()
+        self.otro.first_name = 'Luis'
+        self.otro.email = 'luis@ucr.ac.cr'
+        self.otro.save()
+        creado = self.crear()
+        viaje = Viaje.objects.get(pk=creado.data['id'])
+        reserva = Reserva.objects.create(viaje=viaje, pasajero=self.otro, cupos=1)
+        url = f'/api/viajes/{viaje.pk}/participantes/'
+        self.assertEqual(self.client.get(url).status_code, 400)
+        viaje.estado = Viaje.Estado.FINALIZADO
+        viaje.save(update_fields=['estado'])
+        self.assertEqual(self.client.get(url).data['participantes'], [
+            {'id': self.otro.pk, 'nombre': 'Luis', 'correo': 'luis@ucr.ac.cr', 'rol': 'pasajero'},
+        ])
+        self.client.force_authenticate(self.otro)
+        self.assertEqual(self.client.get(url).data['participantes'], [
+            {'id': self.usuario.pk, 'nombre': 'Ana', 'correo': 'ana@ucr.ac.cr', 'rol': 'conductor'},
+        ])
+        reserva.estado = Reserva.Estado.CANCELADA
+        reserva.save(update_fields=['estado'])
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get(url).status_code, 401)
+
     def test_solo_publicado_al_crear(self):
         for estado in ['lleno', 'en_curso', 'finalizado', 'cancelado']:
             with self.subTest(estado=estado):
@@ -96,6 +125,14 @@ class ViajesAPITests(APITestCase):
         self.assertEqual(respuesta.status_code, 201)
         self.assertEqual(respuesta.data['estado'], 'publicado')
         self.assertEqual(respuesta.data['cupos_disponibles'], 4)
+
+    def test_nombre_opcional_se_guarda_y_actualiza(self):
+        respuesta = self.crear(nombre='Viaje a la U')
+        self.assertEqual(respuesta.status_code, 201)
+        url = f"/api/viajes/{respuesta.data['id']}/"
+        self.assertEqual(self.client.get(url).data['nombre'], 'Viaje a la U')
+        self.assertEqual(self.client.patch(url, {'nombre': 'Regreso'}, format='json').data['nombre'], 'Regreso')
+        self.assertEqual(self.crear().data['nombre'], '')
 
     def test_filtros_invalidos_responden_400(self):
         self.client.raise_request_exception = False

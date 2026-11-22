@@ -18,7 +18,7 @@ class ReservasAPITests(APITestCase):
     def setUp(self):
         Usuario = get_user_model()
         self.conductor = Usuario.objects.create_user(username='conductor')
-        self.pasajero = Usuario.objects.create_user(username='pasajero')
+        self.pasajero = Usuario.objects.create_user(username='pasajero', email='pasajero@ucr.ac.cr')
         self.otro = Usuario.objects.create_user(username='otro')
         self.admin = Usuario.objects.create_user(username='admin', is_staff=True)
         self.soporte = Usuario.objects.create_user(username='soporte')
@@ -44,6 +44,7 @@ class ReservasAPITests(APITestCase):
         respuesta = self.reservar(2, pasajero=self.otro.pk, monto_simulado='0.01')
         self.assertEqual(respuesta.status_code, 201)
         self.assertEqual(respuesta.data['pasajero'], self.pasajero.pk)
+        self.assertEqual(respuesta.data['pasajero_correo'], 'pasajero@ucr.ac.cr')
         self.assertEqual(respuesta.data['monto_simulado'], '6000.00')
         self.viaje.refresh_from_db()
         self.assertEqual(self.viaje.cupos_disponibles, 2)

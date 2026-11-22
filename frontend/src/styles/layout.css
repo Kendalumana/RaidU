@@ -1,17 +1,30 @@
 /* ══════════════════════════════════════════════
-   RaidU – Layout con Sidebar
+   RaidU – Identidad Visual y Estilos Globales
+   Paleta: UCR Azul (#003b71, #0d6efd), Blanco, Gris Neutro
    ══════════════════════════════════════════════ */
 
-/* ── Shell ── */
+:root {
+  --raidu-primary: #0d6efd;
+  --raidu-primary-dark: #003b71;
+  --raidu-primary-light: #e8f0fe;
+  --raidu-success: #198754;
+  --raidu-bg: #f4f6f9;
+  --raidu-sidebar-bg: #1a1d23;
+  --raidu-text: #212529;
+}
+
+/* ── Shell & Base ── */
 .app-shell {
   display: flex;
   min-height: 100vh;
+  background-color: var(--raidu-bg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ── Sidebar ── */
 .app-sidebar {
-  width: 240px;
-  background: #1a1d23;
+  width: 250px;
+  background: var(--raidu-sidebar-bg);
   color: #c8cdd3;
   display: flex;
   flex-direction: column;
@@ -22,63 +35,71 @@
   left: 0;
   z-index: 1030;
   overflow-y: auto;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.15);
 }
 
 .sidebar-brand {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: #fff;
   margin-bottom: 1.5rem;
-  padding-left: .25rem;
+  padding-left: 0.5rem;
+  display: flex;
+  align-items: center;
+  letter-spacing: -0.02em;
 }
 
 .sidebar-label {
-  font-size: .7rem;
-  font-weight: 600;
-  letter-spacing: .08em;
-  color: #6c757d;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #8a939e;
   text-transform: uppercase;
-  margin-bottom: .5rem;
-  padding-left: .25rem;
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
 }
 
 .sidebar-link {
   display: flex;
   align-items: center;
-  padding: .55rem .75rem;
-  border-radius: .5rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.5rem;
   color: #c8cdd3;
   text-decoration: none;
-  font-size: .875rem;
-  transition: background .15s, color .15s;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.18s ease-in-out;
 }
 
 .sidebar-link:hover {
-  background: rgba(255, 255, 255, .08);
+  background: rgba(255, 255, 255, 0.09);
   color: #fff;
+  transform: translateX(2px);
 }
 
 .sidebar-link.active {
-  background: #0d6efd;
+  background: var(--raidu-primary);
   color: #fff;
   font-weight: 600;
+  box-shadow: 0 2px 6px rgba(13, 110, 253, 0.35);
 }
 
 .sidebar-bottom {
   margin-top: auto;
   padding-top: 1rem;
-  font-size: .7rem;
-  color: #6c757d;
+  font-size: 0.72rem;
+  color: #8a939e;
   text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* ── Main area ── */
+/* ── Main content area ── */
 .app-main {
   flex: 1;
-  margin-left: 240px;
+  margin-left: 250px;
   display: flex;
   flex-direction: column;
-  background: #f4f6f9;
+  background: var(--raidu-bg);
   min-height: 100vh;
 }
 
@@ -86,21 +107,48 @@
 .app-topbar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  padding: .75rem 1.5rem;
-  background: #fff;
+  justify-content: space-between;
+  padding: 0.85rem 1.75rem;
+  background: #ffffff;
   border-bottom: 1px solid #e9ecef;
   position: sticky;
   top: 0;
   z-index: 1020;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 /* ── Mobile nav ── */
 .mobile-links {
   display: none;
+  background: #ffffff;
+  border-bottom: 1px solid #e9ecef;
 }
 
-/* ── Responsive ── */
+/* ── Card & UI enhancements ── */
+.card {
+  border-radius: 0.75rem;
+  transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.card:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.06) !important;
+}
+
+.table th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6c757d;
+  font-weight: 600;
+  border-top: none;
+}
+
+.badge {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ── Responsive adjustments ── */
 @media (max-width: 767.98px) {
   .app-sidebar {
     display: none;
@@ -110,5 +158,8 @@
   }
   .mobile-links {
     display: flex !important;
+  }
+  .app-topbar {
+    padding: 0.75rem 1rem;
   }
 }

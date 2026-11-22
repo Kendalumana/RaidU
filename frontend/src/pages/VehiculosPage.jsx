@@ -1,58 +1,20 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { api, getError } from '../api/client.js';
 
-// ── Validación de placa costarricense ──────────────────────────────────
-// Vehículos particulares en Costa Rica:
-// • 1 a 6 caracteres alfanuméricos (letras y números, ej: ABC123, 12ABC1, 542189, etc.)
-// • Guion opcional (ej: ABC-123)
-// • Placas de 7 o más caracteres: taxis, autobuses, equipo especial o carga (NO permitidas en RaidU)
 function validarPlacaCR(placa) {
-  const limpia = placa.replace(/[\s-]/g, '').trim().toUpperCase();
-
-  if (limpia.length === 0) {
-    return { valida: false, esTransportePublico: false, mensaje: '' };
-  }
-
-  // Si tiene 7 o más caracteres: alerta de transporte público / taxis
-  if (limpia.length > 6) {
-    return {
-      valida: false,
-      esTransportePublico: true,
-      mensaje:
-        'Las placas de más de 6 caracteres corresponden a vehículos de transporte público (taxis, buses, carga). ' +
-        'RaidU es exclusivo para vehículos particulares de estudiantes UCR.',
-    };
-  }
-
-  // Caracteres permitidos: letras y números
-  const soloAlfanumerico = /^[A-Z0-9]+$/;
-  if (!soloAlfanumerico.test(limpia)) {
-    return {
-      valida: false,
-      esTransportePublico: false,
-      mensaje: 'La placa solo debe contener letras y números (sin símbolos ni caracteres especiales).',
-    };
-  }
-
-  if (limpia.length < 3) {
-    return {
-      valida: false,
-      esTransportePublico: false,
-      mensaje: 'La placa debe tener al menos 3 caracteres.',
-    };
-  }
-
-  // Válida: entre 3 y 6 caracteres alfanuméricos
-  return { valida: true, esTransportePublico: false, mensaje: '' };
+  const limpia = placa.trim();
+  if (!limpia) return { valida: false, mensaje: 'La placa es obligatoria.' };
+  if (limpia.length > 15) return { valida: false, mensaje: 'La placa debe tener como máximo 15 caracteres.' };
+  return { valida: true, mensaje: '' };
 }
 
 export default function VehiculosPage() {
-  const { rol, esSoporte, fetchProfile } = useAuth();
+  const { user, rol, esSoporte, esConductor, fetchProfile } = useAuth();
 
   // ¿Tiene al menos un vehículo activo para poder publicar viajes?
-  const [tieneVehiculoActivo, setTieneVehiculoActivo] = useState(false);
+  const tieneVehiculoActivo = esConductor;
   const navigate = useNavigate();
 
   // Estados del listado
@@ -66,6 +28,7 @@ export default function VehiculosPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const ultimaConsulta = useRef(0);
 
   // Estados del modal de Crear / Editar
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -83,6 +46,7 @@ export default function VehiculosPage() {
 
   // Cargar vehículos desde el backend
   const cargarVehiculos = useCallback(async (p = 1, q = busqueda) => {
+    const consulta = ++ultimaConsulta.current;
     setLoading(true);
     setError('');
     try {
@@ -93,17 +57,16 @@ export default function VehiculosPage() {
       const url = `/vehiculos/${params.toString() ? `?${params.toString()}` : ''}`;
       const { data } = await api.get(url);
 
+      if (consulta !== ultimaConsulta.current) return;
+
       setVehiculos(data.results || []);
       setPage(data.page || p);
       setTotalPages(data.total_pages || 1);
       setTotalCount(data.count || 0);
-      // Detectar si hay al menos un vehículo activo para habilitar el FAB
-      const activos = (data.results || []).filter((v) => v.activo);
-      setTieneVehiculoActivo(activos.length > 0);
     } catch (err) {
-      setError(getError(err));
+      if (consulta === ultimaConsulta.current) setError(getError(err));
     } finally {
-      setLoading(false);
+      if (consulta === ultimaConsulta.current) setLoading(false);
     }
   }, [busqueda]);
 
@@ -111,11 +74,10 @@ export default function VehiculosPage() {
     cargarVehiculos(1);
   }, [cargarVehiculos]);
 
-  // Manejar búsqueda en vivo con debounce
+  // Manejar búsqueda en vivo
   const handleBuscar = (e) => {
     const valor = e.target.value;
     setBusqueda(valor);
-    cargarVehiculos(1, valor);
   };
 
   // Abrir modal para Crear
@@ -174,7 +136,7 @@ export default function VehiculosPage() {
     setGuardando(true);
     try {
       const payload = {
-        placa: form.placa.trim().toUpperCase(),
+        ...(!editandoId && { placa: form.placa.trim().toUpperCase() }),
         marca: form.marca.trim(),
         modelo: form.modelo.trim(),
         capacidad: Number(form.capacidad),
@@ -183,16 +145,21 @@ export default function VehiculosPage() {
 
       if (editandoId) {
         await api.patch(`/vehiculos/${editandoId}/`, payload);
-        setMsg(`Vehículo ${payload.placa} actualizado con éxito.`);
+        setMsg(`Vehículo ${form.placa} actualizado con éxito.`);
       } else {
         await api.post('/vehiculos/', payload);
         setMsg(`Vehículo ${payload.placa} registrado con éxito.`);
       }
-      if (fetchProfile) await fetchProfile();
       cerrarModal();
-      cargarVehiculos(editandoId ? page : 1);
+      await cargarVehiculos(editandoId ? page : 1);
+      try { await fetchProfile(); } catch { setError('El vehículo se guardó, pero no se pudo actualizar el perfil.'); }
     } catch (err) {
-      setFormError(getError(err));
+      const placa = err.response?.data?.placa;
+      if (placa) {
+        setPlacaError(Array.isArray(placa) ? placa.join(' ') : String(placa));
+      } else {
+        setFormError(getError(err));
+      }
     } finally {
       setGuardando(false);
     }
@@ -208,8 +175,8 @@ export default function VehiculosPage() {
     try {
       await api.delete(`/vehiculos/${id}/`);
       setMsg(`Vehículo ${placa} eliminado exitosamente.`);
-      if (fetchProfile) await fetchProfile();
-      cargarVehiculos(page);
+      await cargarVehiculos(page > 1 && vehiculos.length === 1 ? page - 1 : page);
+      try { await fetchProfile(); } catch { setError('El vehículo se eliminó, pero no se pudo actualizar el perfil.'); }
     } catch (err) {
       setError(getError(err));
     }
@@ -299,7 +266,6 @@ export default function VehiculosPage() {
                 type="button"
                 onClick={() => {
                   setBusqueda('');
-                  cargarVehiculos(1, '');
                 }}
                 className="btn btn-sm btn-light rounded-pill px-3 text-secondary"
               >
@@ -406,12 +372,6 @@ export default function VehiculosPage() {
                       </div>
                     </div>
 
-                    {/* Subdetalle: Exclusión del conductor */}
-                    <div className="d-flex justify-content-between align-items-center">
-                      <span className="text-secondary small">Asiento Conductor:</span>
-                      <span className="badge bg-white text-secondary border small">Excluido (Automático)</span>
-                    </div>
-
                     {/* Propietario (si es admin o soporte) */}
                     {(rol === 'admin' || rol === 'soporte') && v.propietario && (
                       <div className="d-flex justify-content-between align-items-center border-top pt-2 mt-1">
@@ -426,7 +386,7 @@ export default function VehiculosPage() {
                 <div className="d-flex gap-3 mt-auto pt-3 border-top justify-content-center">
 
                   {/* Publicar Viaje con este vehículo */}
-                  {!esSoporte && v.activo && (
+                  {!esSoporte && v.activo && Number(v.propietario) === Number(user?.id) && (
                     <button
                       type="button"
                       onClick={() => irAPublicarViaje(v.id)}
@@ -600,29 +560,22 @@ export default function VehiculosPage() {
                     <div className="col-12 col-sm-6">
                       <label htmlFor="placa" className="form-label small fw-semibold">
                         Número de Placa *
+                        {editandoId && <i className="bi bi-lock-fill text-secondary ms-2" aria-label="Bloqueada" />}
                       </label>
                       <input
                         id="placa"
                         type="text"
                         className={`form-control rounded-3 text-uppercase fw-bold ${
-                          placaError ? 'is-invalid' : form.placa && !placaError ? 'is-valid' : ''
+                          placaError ? 'is-invalid' : ''
                         }`}
                         placeholder="Ej: ABC-123 o 123456"
-                        maxLength={8}
+                        maxLength={15}
                         value={form.placa}
+                        readOnly={Boolean(editandoId)}
                         onChange={(e) => {
                           const val = e.target.value.toUpperCase();
                           setForm({ ...form, placa: val });
-                          const limpia = val.replace(/[\s-]/g, '');
-                          if (limpia.length > 6) {
-                            setPlacaError(
-                              'Las placas de más de 6 caracteres corresponden a vehículos de transporte público (taxis, buses, carga). RaidU es exclusivo para vehículos particulares de estudiantes UCR.'
-                            );
-                          } else if (/[^A-Z0-9-]/.test(val)) {
-                            setPlacaError('La placa solo debe contener letras, números y guión.');
-                          } else {
-                            setPlacaError('');
-                          }
+                          setPlacaError('');
                         }}
                         onBlur={() => {
                           if (form.placa.trim()) {
@@ -632,7 +585,7 @@ export default function VehiculosPage() {
                         }}
                         required
                         autoFocus
-                        style={{ letterSpacing: '0.08em', fontFamily: 'monospace' }}
+                        style={{ letterSpacing: '0.08em', fontFamily: 'monospace', ...(editandoId ? { backgroundColor: '#e9ecef', cursor: 'not-allowed' } : {}) }}
                       />
                       {/* Error de placa como alerta visible */}
                       {placaError && (
@@ -644,14 +597,8 @@ export default function VehiculosPage() {
                           <span className="text-danger small">{placaError}</span>
                         </div>
                       )}
-                      {!placaError && form.placa && form.placa.replace(/[\s-]/g, '').length >= 3 && (
-                        <div className="text-success small mt-1 d-flex align-items-center gap-1">
-                          <i className="bi bi-check-circle-fill" />
-                          <span>Formato de placa costarricense válido</span>
-                        </div>
-                      )}
                       <span className="text-secondary small d-block mt-1" style={{ fontSize: '0.68rem' }}>
-                        Hasta 6 caracteres (ej: ABC-123, 12ABC1 o 123456). Vehículos particulares UCR.
+                        {editandoId ? 'La placa no se puede modificar.' : 'Hasta 15 caracteres (ej: ABC-123 o 123456).'}
                       </span>
                     </div>
 

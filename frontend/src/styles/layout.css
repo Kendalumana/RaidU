@@ -1,5 +1,6 @@
 /* ══════════════════════════════════════════════════════════════
    RaidU – Diseño Minimalista Blanco / Clean Tech (Inspiración Dribbble)
+   Paleta: UCR Azul (#0284c7 / #003b71), Blanco, Gris Neutro
    ══════════════════════════════════════════════════════════════ */
 
 :root {
@@ -11,6 +12,13 @@
   --brand-indigo: #4f46e5;
   --border-subtle: #f1f5f9;
   --sidebar-width: 250px;
+
+  --raidu-primary: #0284c7;
+  --raidu-primary-dark: #003b71;
+  --raidu-primary-light: #e0f2fe;
+  --raidu-success: #10b981;
+  --raidu-bg: #f8fafc;
+  --raidu-text: #0f172a;
 }
 
 body {
@@ -60,7 +68,7 @@ body {
   padding-left: 0.5rem;
 }
 
-/* Enlaces del Sidebar */
+/* Links de navegación */
 .sidebar-link {
   display: flex;
   align-items: center;
@@ -118,7 +126,6 @@ body {
   min-height: 100vh;
 }
 
-/* ── Topbar Minimalista ── */
 .app-topbar {
   display: flex;
   align-items: center;
@@ -129,6 +136,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 1020;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 .topbar-search {
@@ -159,6 +167,9 @@ body {
   }
   .app-main {
     margin-left: 0;
+  }
+  .app-topbar {
+    padding: 0.75rem 1rem;
   }
 }
 
@@ -195,7 +206,31 @@ body {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
 }
 
-/* Botones de acción simulación */
+/* ── Card & UI enhancements ── */
+.card {
+  border-radius: 0.75rem;
+  transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.card:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.06) !important;
+}
+
+.table th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6c757d;
+  font-weight: 600;
+  border-top: none;
+}
+
+.badge {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Botones de acción */
 .btn-sim-action {
   border-radius: 12px;
   font-weight: 600;

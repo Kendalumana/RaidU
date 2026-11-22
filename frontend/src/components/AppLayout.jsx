@@ -5,24 +5,26 @@ import ProfileDropdown from './ProfileDropdown.jsx';
 import UcrLogo from './UcrLogo.jsx';
 
 export default function AppLayout() {
-  const { rol } = useAuth();
+  const { user, rol, esAdmin } = useAuth();
   const location = useLocation();
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
 
+  const esStaff = esAdmin || rol === 'admin' || rol === 'soporte';
+
   const navItems = [
-    { to: '/', end: true, icon: 'bi-house-door-fill', label: 'Inicio' },
-    { to: '/vehiculos', icon: 'bi-truck-front-fill', label: 'Vehículos' },
-    { to: '/viajes', icon: 'bi-geo-alt-fill', label: 'Viajes & Rides' },
-    { to: '/reservas', icon: 'bi-ticket-perforated-fill', label: 'Reservas' },
-    { to: '/calificaciones', icon: 'bi-star-fill', label: 'Calificaciones' },
-    ...(rol === 'admin' || rol === 'soporte'
+    { to: '/', end: true, icon: 'bi-speedometer2', label: 'Inicio' },
+    { to: '/vehiculos', icon: 'bi-truck', label: 'Vehículos' },
+    { to: '/viajes', icon: 'bi-map', label: 'Viajes' },
+    { to: '/reservas', icon: 'bi-bookmark-check', label: 'Reservas' },
+    { to: '/calificaciones', icon: 'bi-star', label: 'Calificaciones' },
+    ...(esStaff
       ? [{ to: '/usuarios', icon: 'bi-people-fill', label: 'Usuarios UCR' }]
       : []),
     { to: '/perfil', icon: 'bi-person-circle', label: 'Mi Perfil' },
   ];
 
-  // En móvil: Lo propio/personal (Perfil y Calificaciones) se accede desde
-  // el menú superior derecho del avatar, para que no aparezca duplicado en el menú izquierdo.
+  // En móvil: Lo personal (Perfil y Calificaciones) se accede desde
+  // el menú superior derecho del avatar, para no duplicarlo en el drawer.
   const navItemsMovil = navItems.filter(
     (item) => item.to !== '/calificaciones' && item.to !== '/perfil'
   );
@@ -166,7 +168,7 @@ export default function AppLayout() {
           </div>
         </header>
 
-        {/* ── Contenido de las páginas: scroll 100% natural sin barras que tapen ── */}
+        {/* ── Contenido de las páginas ── */}
         <main className="container-fluid p-3 p-md-4 p-xl-5">
           <Outlet />
         </main>

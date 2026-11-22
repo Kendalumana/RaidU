@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage.jsx';
 import RegistroPage from './pages/RegistroPage.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import PerfilPage from './pages/PerfilPage.jsx';
+import AjustesPage from './pages/AjustesPage.jsx';
 import UsuariosPage from './pages/UsuariosPage.jsx';
 import VehiculosPage from './pages/VehiculosPage.jsx';
 import ViajesPage from './pages/ViajesPage.jsx';
@@ -36,6 +37,7 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/perfil" element={<PerfilPage />} />
+              <Route path="/ajustes" element={<AjustesPage />} />
               <Route path="/usuarios" element={<UsuariosPage />} />
               <Route path="/vehiculos" element={<VehiculosPage />} />
               <Route path="/viajes" element={<ViajesPage />} />

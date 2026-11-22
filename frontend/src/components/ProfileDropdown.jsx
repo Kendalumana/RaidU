@@ -152,6 +152,16 @@ export default function ProfileDropdown() {
               <span>Mi Perfil</span>
             </Link>
 
+            <Link
+              to="/ajustes"
+              onClick={() => setOpen(false)}
+              className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-3 text-secondary text-decoration-none"
+              style={{ fontSize: '0.875rem' }}
+            >
+              <i className="bi bi-gear text-secondary fs-5" />
+              <span>Ajustes de Cuenta</span>
+            </Link>
+
             {/* Mis Vehículos: Solo se muestra si es conductor (o admin/soporte) */}
             {(esConductor || esAdmin || esSoporte) && (
               <Link

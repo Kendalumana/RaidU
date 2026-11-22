@@ -23,9 +23,14 @@ Este proyecto se desarrolla para el curso **IF0009 – Desarrollo de Software IV
 - **Django:** desarrollo del backend.
 - **Django REST Framework:** creación de la API REST.
 - **MySQL:** almacenamiento de datos.
+- **React + Vite:** desarrollo del frontend tipo Single Page Application (SPA).
+- **Bootstrap 5 & Bootstrap Icons:** diseño responsivo, limpio e identidad visual UCR.
+- **Axios:** consumo HTTP de la API REST.
 - **Git y GitHub:** control de versiones y trabajo en equipo.
 
 ## ¿Cómo ejecutar el proyecto?
+
+### A. Backend (Django REST Framework)
 
 **1. Clonar el repositorio:**
 
@@ -57,9 +62,60 @@ Crear una base de datos MySQL llamada `raidu_db` y configurar las credenciales e
 
 `python manage.py runserver`
 
-El servidor estará disponible en:
+El servidor estará disponible en: `http://127.0.0.1:8000/`
 
-`http://127.0.0.1:8000/`
+---
+
+### B. Frontend (React 19 + Vite + Bootstrap 5)
+
+**Requisitos previos:** Node.js (v18 o superior) y npm.
+
+**1. Entrar a la carpeta del frontend:**
+
+```bash
+cd frontend
+```
+
+**2. Instalar dependencias:**
+
+```bash
+npm install
+```
+
+**3. Configurar variables de entorno:**
+
+Copiar el archivo de plantilla `.env.example` como `.env`:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Contenido de `.env`:
+```env
+VITE_API_URL=http://127.0.0.1:8000/api
+```
+
+**4. Iniciar el servidor de desarrollo:**
+
+```bash
+npm run dev
+```
+
+La aplicación web estará disponible en: **`http://localhost:5173/`**
+
+**5. Ejecutar pruebas automatizadas del frontend:**
+
+```bash
+npm test
+```
+
+### Configuración CORS
+
+El backend incluye `django-cors-headers` configurado en `config/settings.py` para admitir peticiones seguras desde los orígenes de desarrollo de React:
+- `http://localhost:5173`
+- `http://127.0.0.1:5173`
+
+La autenticación utiliza cabeceras `Authorization: Token <key>`, administradas automáticamente mediante interceptores de Axios en `frontend/src/api/client.js`.
 
 ## Estado actual del proyecto
 

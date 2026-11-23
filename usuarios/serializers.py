@@ -2,11 +2,23 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
+from rest_framework.authtoken.serializers import AuthTokenSerializer
 
 from .models import PerfilUsuario
 
 
 Usuario = get_user_model()
+
+
+class TokenUsuarioOCorreoSerializer(AuthTokenSerializer):
+    def validate(self, attrs):
+        acceso = attrs.get('username', '')
+        if '@' in acceso and not Usuario.objects.filter(username=acceso).exists():
+            usuarios = list(Usuario.objects.filter(email__iexact=acceso)
+                            .values_list('username', flat=True)[:2])
+            if len(usuarios) == 1:
+                attrs['username'] = usuarios[0]
+        return super().validate(attrs)
 
 
 class UsuarioSerializer(serializers.ModelSerializer):

@@ -50,7 +50,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
-              <label htmlFor="username" className="form-label">Nombre de usuario</label>
+              <label htmlFor="username" className="form-label">Usuario o correo electrónico</label>
               <div className="input-group">
                 <span className="input-group-text">
                   <i className="bi bi-person" aria-hidden="true" />

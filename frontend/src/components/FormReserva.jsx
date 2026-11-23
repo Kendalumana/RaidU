@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 const initial = {
   viaje: '',
-  cupos: 1,
+  cupos: '',
 };
 
 const nombresSede = {
@@ -47,7 +47,7 @@ export default function FormReserva({
     } else {
       setForm({
         viaje: '',
-        cupos: 1,
+        cupos: '',
       });
     }
   }, [reserva]);
@@ -66,10 +66,20 @@ export default function FormReserva({
   const change = ({ target }) => {
     const { name, value } = target;
 
-    setForm((actual) => ({
-      ...actual,
-      [name]: value,
-    }));
+    setForm((actual) => {
+      if (name === 'viaje' && !reserva) {
+        const viaje = viajes.find((item) => Number(item.id) === Number(value));
+        const maximo = Number(viaje?.cupos_disponibles || 1);
+        const cuposActuales = Number(actual.cupos) || 1;
+        return {
+          ...actual,
+          viaje: value,
+          cupos: Math.min(cuposActuales, maximo),
+        };
+      }
+
+      return { ...actual, [name]: value };
+    });
   };
 
   const submit = async (event) => {
@@ -179,21 +189,28 @@ export default function FormReserva({
                 Cupos *
               </label>
 
-              <input
+              <select
                 id="reserva-cupos"
                 name="cupos"
-                type="number"
-                min="1"
-                max={maxCupos}
-                className="form-control"
+                className="form-select"
                 value={form.cupos}
                 onChange={change}
+                disabled={!viajeSeleccionado || saving || cargandoViajes}
                 required
-              />
+              >
+                {!viajeSeleccionado && <option value="">Seleccione un viaje primero</option>}
+                {viajeSeleccionado && Array.from({ length: maxCupos }, (_, index) => index + 1).map((cantidad) => (
+                  <option key={cantidad} value={cantidad}>
+                    {cantidad} {cantidad === 1 ? 'cupo' : 'cupos'}
+                  </option>
+                ))}
+              </select>
 
               {viajeSeleccionado && (
                 <small className="text-secondary">
-                  Disponibles: {maxCupos}
+                  {reserva
+                    ? `${reserva.cupos} reservados + ${viajeSeleccionado.cupos_disponibles} libres = máximo ${maxCupos}`
+                    : `${maxCupos} cupos disponibles`}
                 </small>
               )}
             </div>

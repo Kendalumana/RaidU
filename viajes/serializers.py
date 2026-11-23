@@ -6,6 +6,8 @@ from .models import Viaje
 
 class ViajeSerializer(serializers.ModelSerializer):
     cupos_totales = serializers.IntegerField(min_value=1, max_value=32767)
+    vehiculo_placa = serializers.CharField(source='vehiculo.placa', read_only=True)
+    conductor_correo = serializers.EmailField(source='conductor.email', read_only=True, allow_blank=True)
 
     class Meta:
         model = Viaje

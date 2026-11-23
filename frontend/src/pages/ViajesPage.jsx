@@ -688,10 +688,11 @@ export default function ViajesPage() {
                           <div className="p-3 bg-white rounded border mt-2 small">
                             <div className="row g-2">
                               <div className="col-6">
-                                <strong>Vehículo ID:</strong> #{v.vehiculo}
+                                <strong>Placa:</strong> {v.vehiculo_placa || 'No disponible'}
                               </div>
                               <div className="col-6">
-                                <strong>Conductor ID:</strong> #{v.conductor}
+                                <strong>Correo del conductor:</strong>{' '}
+                                {v.conductor_correo || 'No registrado'}
                               </div>
                               <div className="col-12 text-muted">
                                 Publicado bajo reglas universitarias de transporte RaidU.

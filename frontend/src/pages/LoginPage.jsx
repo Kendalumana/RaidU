@@ -5,7 +5,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -14,13 +14,13 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!email.trim() || !password) {
+    if (!username.trim() || !password) {
       setError('Complete todos los campos.');
       return;
     }
     setLoading(true);
     try {
-      await login(email.trim(), password);
+      await login(username.trim(), password);
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.message);
@@ -50,15 +50,15 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
-              <label htmlFor="email" className="form-label">Correo institucional</label>
+              <label htmlFor="username" className="form-label">Nombre de usuario</label>
               <div className="input-group">
                 <span className="input-group-text">
-                  <i className="bi bi-envelope" aria-hidden="true" />
+                  <i className="bi bi-person" aria-hidden="true" />
                 </span>
                 <input
-                  id="email" type="email" className="form-control"
-                  placeholder="usuario@ucr.ac.cr"
-                  value={email} onChange={(e) => setEmail(e.target.value)}
+                  id="username" type="text" autoComplete="username" className="form-control"
+                  placeholder="Ej. conductor o usuario@ucr.ac.cr"
+                  value={username} onChange={(e) => setUsername(e.target.value)}
                   autoFocus required
                 />
               </div>

@@ -31,6 +31,7 @@ export default function CalificacionesPage() {
   });
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [eliminandoId, setEliminandoId] = useState(null);
   const [formErrors, setFormErrors] = useState({});
 
   /* ── Datos de apoyo para el formulario ── */
@@ -223,18 +224,21 @@ export default function CalificacionesPage() {
 
   /* ═══ 7. Eliminar calificación ═══ */
   const eliminarCalificacion = async (id) => {
+    if (eliminandoId) return;
     if (!window.confirm('¿Está seguro de eliminar esta calificación? Esta acción no se puede deshacer.')) {
       return;
     }
     setMsg('');
     setError('');
+    setEliminandoId(id);
     try {
       await api.delete(`/calificaciones/${id}/`);
       setMsg('Calificación eliminada correctamente.');
-      cargarCalificaciones(page);
-      cargarPromedio();
+      await Promise.all([cargarCalificaciones(page), cargarPromedio()]);
     } catch (err) {
       setError(getError(err));
+    } finally {
+      setEliminandoId(null);
     }
   };
 
@@ -695,8 +699,18 @@ export default function CalificacionesPage() {
                             className="btn btn-outline-danger btn-sm rounded-pill px-3 py-1"
                             style={{ fontSize: '0.75rem' }}
                             onClick={() => eliminarCalificacion(c.id)}
+                            disabled={eliminandoId === c.id || saving}
                           >
-                            <i className="bi bi-trash me-1" />Eliminar
+                            {eliminandoId === c.id ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />
+                                Eliminando...
+                              </>
+                            ) : (
+                              <>
+                                <i className="bi bi-trash me-1" />Eliminar
+                              </>
+                            )}
                           </button>
                         </div>
                       )}

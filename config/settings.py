@@ -17,6 +17,9 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
 
+# Preparación para una posible integración futura desde el servidor.
+VERIFIK_API_TOKEN = os.getenv('VERIFIK_API_TOKEN', '')
+
 
 # Application definition
 

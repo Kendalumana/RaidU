@@ -1,7 +1,8 @@
 from config.paginacion import respuesta_paginada
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.db.models.deletion import ProtectedError
+from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
 from rest_framework import status
@@ -41,19 +42,27 @@ def viajes_api(request):
         filtros = FiltrosViajeSerializer(data=request.query_params)
         filtros.is_valid(raise_exception=True)
         datos = filtros.validated_data
-        viajes = Viaje.objects.all()
+        if datos.get('mis_viajes'):
+            viajes = Viaje.objects.filter(
+                Q(conductor=request.user) | Q(reservas__pasajero=request.user, reservas__estado='confirmada')
+            ).distinct()
+        else:
+            viajes = Viaje.objects.all()
+        if datos.get("disponibles") or datos.get("reservables"):
+            viajes = viajes.filter(estado=Viaje.Estado.PUBLICADO, fecha_hora__gt=timezone.now(), cupos_disponibles__gt=0)
+        if datos.get("reservables"):
+            viajes = viajes.exclude(conductor=request.user).exclude(reservas__pasajero=request.user)
         campos = {'sede_origen': 'sede_origen', 'sede_destino': 'sede_destino', 'fecha': 'fecha_hora__date', 'estado': 'estado', 'cupos_minimos': 'cupos_disponibles__gte'}
         for parametro, campo in campos.items():
             if parametro in datos:
                 viajes = viajes.filter(**{campo: datos[parametro]})
-        viajes = viajes.order_by(datos.get('ordering', 'fecha_hora'), 'id')
+        viajes = viajes.select_related("conductor", "vehiculo").order_by(datos.get('ordering', 'fecha_hora'), 'id')
 
         return respuesta_paginada(
             viajes,
             ViajeSerializer,
             request.query_params.get('page', 1)
         )
-
 
     if request.method == 'POST':
 
@@ -99,6 +108,31 @@ def viajes_api(request):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mis_viajes_api(request):
+    filtros = FiltrosViajeSerializer(data=request.query_params)
+    filtros.is_valid(raise_exception=True)
+    datos = filtros.validated_data
+
+    # Consulta personal: viajes conducidos o con reserva confirmada, sin duplicados
+    viajes = Viaje.objects.filter(
+        Q(conductor=request.user) | Q(reservas__pasajero=request.user, reservas__estado='confirmada')
+    ).distinct()
+
+    campos = {'sede_origen': 'sede_origen', 'sede_destino': 'sede_destino', 'fecha': 'fecha_hora__date', 'estado': 'estado', 'cupos_minimos': 'cupos_disponibles__gte'}
+    for parametro, campo in campos.items():
+        if parametro in datos:
+            viajes = viajes.filter(**{campo: datos[parametro]})
+    viajes = viajes.select_related("conductor", "vehiculo").order_by(datos.get('ordering', 'fecha_hora'), 'id')
+
+    return respuesta_paginada(
+        viajes,
+        ViajeSerializer,
+        request.query_params.get('page', 1)
+    )
 
 
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])

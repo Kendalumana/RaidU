@@ -289,7 +289,7 @@ export default function VehiculosPage() {
             className="rounded-circle bg-light text-primary d-inline-flex align-items-center justify-content-center mx-auto mb-3"
             style={{ width: 70, height: 70 }}
           >
-            <i className="bi bi-truck-front-fill fs-2" />
+            <i className="bi bi-car-front-fill fs-2" />
           </div>
           <h4 className="fw-bold text-dark">Aún no tienes vehículos registrados</h4>
           <p className="text-secondary small mx-auto" style={{ maxWidth: 420 }}>

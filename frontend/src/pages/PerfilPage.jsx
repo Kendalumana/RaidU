@@ -8,6 +8,8 @@ export default function PerfilPage() {
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [refreshError, setRefreshError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -21,10 +23,23 @@ export default function PerfilPage() {
 
   const change = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
+  const actualizarPerfil = async () => {
+    setRefreshError('');
+    setRefreshing(true);
+    try {
+      await fetchProfile();
+    } catch (err) {
+      setRefreshError(getError(err));
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMsg('');
     setError('');
+    setRefreshError('');
     setSaving(true);
     try {
       await api.patch('/perfil/', {
@@ -32,8 +47,8 @@ export default function PerfilPage() {
         last_name: form.last_name.trim(),
         telefono: form.telefono.trim(),
       });
-      await fetchProfile();
       setMsg('Perfil actualizado correctamente.');
+      await actualizarPerfil();
     } catch (err) {
       setError(getError(err));
     } finally {
@@ -74,6 +89,19 @@ export default function PerfilPage() {
 
               {msg && <div className="alert alert-success py-2">{msg}</div>}
               {error && <div className="alert alert-danger py-2">{error}</div>}
+              {refreshError && (
+                <div className="alert alert-warning py-2 d-flex flex-wrap align-items-center justify-content-between gap-2" role="alert">
+                  <span>No se pudieron volver a cargar los datos del perfil: {refreshError}</span>
+                  <button
+                    type="button"
+                    className="btn btn-outline-warning btn-sm"
+                    onClick={actualizarPerfil}
+                    disabled={refreshing}
+                  >
+                    {refreshing ? 'Actualizando...' : 'Reintentar actualización'}
+                  </button>
+                </div>
+              )}
 
               <form onSubmit={handleSubmit}>
                 <div className="row g-3">
@@ -93,7 +121,7 @@ export default function PerfilPage() {
                       placeholder="8888-8888" value={form.telefono} onChange={change} />
                   </div>
                 </div>
-                <button type="submit" className="btn btn-primary mt-4" disabled={saving}>
+                <button type="submit" className="btn btn-primary mt-4" disabled={saving || refreshing}>
                   {saving ? (
                     <><span className="spinner-border spinner-border-sm me-2" />Guardando...</>
                   ) : (

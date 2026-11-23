@@ -152,51 +152,13 @@ export default function ProfileDropdown() {
               <span>Mi Perfil</span>
             </Link>
 
-            {/* Mis Vehículos: Solo se muestra si es conductor (o admin/soporte) */}
-            {(esConductor || esAdmin || esSoporte) && (
-              <Link
-                to="/vehiculos"
-                onClick={() => setOpen(false)}
-                className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-3 text-secondary text-decoration-none"
-                style={{ fontSize: '0.875rem' }}
-              >
-                <i className="bi bi-truck text-info fs-5" />
-                <span>Mis Vehículos</span>
-              </Link>
-            )}
-
-            {/* Mis Reservas */}
-            <Link
-              to="/reservas"
-              onClick={() => setOpen(false)}
+            <Link to="/ajustes" onClick={() => setOpen(false)}
               className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-3 text-secondary text-decoration-none"
-              style={{ fontSize: '0.875rem' }}
-            >
-              <i className="bi bi-bookmark-check-fill text-success fs-5" />
-              <span>Mis Reservas</span>
+              style={{ fontSize: '0.875rem' }}>
+              <i className="bi bi-gear text-secondary fs-5" />
+              <span>Ajustes</span>
             </Link>
 
-            <Link
-              to="/calificaciones"
-              onClick={() => setOpen(false)}
-              className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-3 text-secondary text-decoration-none"
-              style={{ fontSize: '0.875rem' }}
-            >
-              <i className="bi bi-star text-warning fs-5" />
-              <span>Calificaciones & Reseñas</span>
-            </Link>
-
-            {(rol === 'admin' || rol === 'soporte') && (
-              <Link
-                to="/usuarios"
-                onClick={() => setOpen(false)}
-                className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-3 text-secondary text-decoration-none"
-                style={{ fontSize: '0.875rem' }}
-              >
-                <i className="bi bi-shield-check text-danger fs-5" />
-                <span>Panel de Usuarios</span>
-              </Link>
-            )}
           </div>
 
           <div className="border-top pt-2">

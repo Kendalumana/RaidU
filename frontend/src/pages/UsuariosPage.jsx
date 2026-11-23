@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { api, getError } from '../api/client.js';
 import { Link } from 'react-router-dom';
@@ -10,10 +10,11 @@ export default function UsuariosPage() {
 
   /* ── Estado de listado ── */
   const [usuarios, setUsuarios] = useState([]);
-  const [vehiculos, setVehiculos] = useState([]);
-  const [vehiculosError, setVehiculosError] = useState(false);
+  const ultimaConsulta = useRef(0);
+  const [vehiculosPorUsuario, setVehiculosPorUsuario] = useState({});
+  const [erroresVehiculosUsuario, setErroresVehiculosUsuario] = useState({});
+  const [cargandoVehiculosUsuario, setCargandoVehiculosUsuario] = useState(null);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -30,56 +31,102 @@ export default function UsuariosPage() {
 
   /* ═══ Cargar usuarios y catálogo de vehículos para correlación ═══ */
   const cargar = useCallback(
-    async (p = 1) => {
+    async () => {
+      const consulta = ++ultimaConsulta.current;
       setLoading(true);
       setError('');
       try {
-        const [resUsuarios, resVehiculos] = await Promise.allSettled([
-          api.get(`/usuarios/?page=${p}`),
-          api.get('/vehiculos/?page=1'),
-        ]);
-
-        if (resUsuarios.status === 'fulfilled') {
-          const d = resUsuarios.value.data;
-          setUsuarios(d.results || []);
-          setPage(d.page || p);
-          setTotalPages(d.total_pages || 1);
-          setTotalCount(d.count || 0);
-        } else {
-          setError(getError(resUsuarios.reason));
-        }
-
-        if (resVehiculos.status === 'fulfilled') {
-          setVehiculos(resVehiculos.value.data?.results || []);
-          setVehiculosError(false);
-        } else {
-          setVehiculos([]);
-          setVehiculosError(true);
-        }
+        const { data } = await api.get('/usuarios/', {
+          params: { page, search: search.trim(), estado: filtroEstado, rol: filtroRol, correo: filtroCorreo },
+        });
+        if (consulta !== ultimaConsulta.current) return;
+        setUsuarios(data.results);
+        setTotalCount(data.count);
       } catch (err) {
-        setError(getError(err));
+        if (consulta !== ultimaConsulta.current) return;
+        if (err.response?.status === 404 && page > 1) setPage(page - 1);
+        else setError(getError(err));
       } finally {
-        setLoading(false);
+        if (consulta === ultimaConsulta.current) setLoading(false);
       }
     },
-    []
+    [page, search, filtroEstado, filtroRol, filtroCorreo]
   );
 
   useEffect(() => {
-    if (puedeListar) cargar(page);
-  }, [cargar, page, puedeListar]);
+    if (puedeListar) cargar();
+  }, [cargar, puedeListar]);
 
   /* ═══ Mapa de vehículos agrupados por ID de propietario ═══ */
-  const vehiculosPorUsuario = useMemo(() => {
-    const mapa = {};
-    vehiculos.forEach((v) => {
-      if (!v.activo) return;
-      const propId = Number(v.propietario);
-      if (!mapa[propId]) mapa[propId] = [];
-      mapa[propId].push(v);
-    });
-    return mapa;
-  }, [vehiculos]);
+  const cargarVehiculosUsuario = async (userId) => {
+    setCargandoVehiculosUsuario(userId);
+    setErroresVehiculosUsuario((prev) => ({ ...prev, [userId]: '' }));
+
+    try {
+      const vehiculosActivos = [];
+      let pagina = 1;
+      let paginas;
+      do {
+        const { data } = await api.get('/vehiculos/', { params: { propietario: userId, activo: 'true', page: pagina } });
+        vehiculosActivos.push(...data.results);
+        paginas = data.total_pages;
+        pagina++;
+      } while (pagina <= paginas);
+      setVehiculosPorUsuario((prev) => ({ ...prev, [userId]: vehiculosActivos }));
+    } catch (err) {
+      setErroresVehiculosUsuario((prev) => ({ ...prev, [userId]: getError(err) }));
+    } finally {
+      setCargandoVehiculosUsuario(null);
+    }
+  };
+
+  const toggleVehiculos = (usuario) => {
+    if (cargandoVehiculosUsuario !== null) return;
+
+    const yaExpandido = expandedUserId === usuario.id;
+    setExpandedUserId(yaExpandido ? null : usuario.id);
+
+    const yaCargados = Object.prototype.hasOwnProperty.call(vehiculosPorUsuario, usuario.id);
+    if (!yaExpandido && !yaCargados) cargarVehiculosUsuario(usuario.id);
+  };
+
+  const renderDetalleVehiculos = (usuario) => {
+    if (cargandoVehiculosUsuario === usuario.id) {
+      return <span className="text-muted">Cargando vehículos...</span>;
+    }
+
+    if (erroresVehiculosUsuario[usuario.id]) {
+      return (
+        <div>
+          <span className="text-danger d-block mb-2">No se pudo cargar el detalle: {erroresVehiculosUsuario[usuario.id]}</span>
+          <button
+            type="button"
+            className="btn btn-outline-primary btn-sm"
+            onClick={() => cargarVehiculosUsuario(usuario.id)}
+            disabled={cargandoVehiculosUsuario !== null}
+          >
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+
+    const vehiculosUsuario = vehiculosPorUsuario[usuario.id];
+    if (!vehiculosUsuario) return null;
+    if (vehiculosUsuario.length === 0) {
+      return <span className="text-muted fst-italic">Sin vehículos activos registrados.</span>;
+    }
+
+    return (
+      <ul className="list-unstyled mb-0">
+        {vehiculosUsuario.map((vehiculo) => (
+          <li key={vehiculo.id} className="py-1 border-bottom border-secondary border-opacity-10">
+            <strong>{vehiculo.placa}</strong> - {vehiculo.marca} {vehiculo.modelo} ({vehiculo.capacidad} asientos)
+          </li>
+        ))}
+      </ul>
+    );
+  };
 
   /* ═══ Desactivar cuenta de usuario (DELETE /usuarios/<pk>/) ═══ */
   const desactivar = async (u) => {
@@ -95,47 +142,13 @@ export default function UsuariosPage() {
     try {
       await api.delete(`/usuarios/${u.id}/`);
       setMsg(`La cuenta de "${u.email}" ha sido desactivada exitosamente.`);
-      await cargar(page);
+      await cargar();
     } catch (err) {
       setError(getError(err));
     }
   };
 
-  /* ═══ Filtros locales reactivos sobre la página actual ═══ */
-  const usuariosFiltrados = useMemo(() => {
-    return usuarios.filter((u) => {
-      // Búsqueda por texto (nombre, apellido, email)
-      const q = search.trim().toLowerCase();
-      const matchText =
-        !q ||
-        (u.first_name && u.first_name.toLowerCase().includes(q)) ||
-        (u.last_name && u.last_name.toLowerCase().includes(q)) ||
-        (u.email && u.email.toLowerCase().includes(q)) ||
-        (u.username && u.username.toLowerCase().includes(q));
-
-      // Filtro por estado activo/inactivo
-      const matchEstado =
-        filtroEstado === 'todos' ||
-        (filtroEstado === 'activo' && u.activo) ||
-        (filtroEstado === 'inactivo' && !u.activo);
-
-      // Filtro por rol
-      const matchRol =
-        filtroRol === 'todos' ||
-        (filtroRol === 'admin' && (u.es_admin || u.rol === 'admin')) ||
-        (filtroRol === 'soporte' && (u.es_soporte || u.rol === 'soporte')) ||
-        (filtroRol === 'estudiante' && u.rol === 'estudiante');
-
-      // Filtro por correo institucional
-      const esInstitucional = u.email && u.email.toLowerCase().endsWith('@ucr.ac.cr');
-      const matchCorreo =
-        filtroCorreo === 'todos' ||
-        (filtroCorreo === 'institucional' && esInstitucional) ||
-        (filtroCorreo === 'no_institucional' && !esInstitucional);
-
-      return matchText && matchEstado && matchRol && matchCorreo;
-    });
-  }, [usuarios, search, filtroEstado, filtroRol, filtroCorreo]);
+  const totalPages = Math.max(1, Math.ceil(totalCount / 10));
 
   /* Defensa adicional: Django permite lectura a Admin y Soporte. */
   if (!puedeListar) {
@@ -175,7 +188,7 @@ export default function UsuariosPage() {
           </p>
         </div>
 
-        <button className="btn btn-outline-primary btn-sm" onClick={() => cargar(page)}>
+        <button className="btn btn-outline-primary btn-sm" onClick={cargar} disabled={loading}>
           <i className="bi bi-arrow-clockwise me-1" />Actualizar listado
         </button>
       </div>
@@ -189,9 +202,12 @@ export default function UsuariosPage() {
         </div>
       )}
       {error && (
-        <div className="alert alert-danger alert-dismissible fade show py-2 d-flex align-items-center" role="alert">
+        <div className="alert alert-danger alert-dismissible fade show py-2 d-flex flex-wrap align-items-center gap-2" role="alert">
           <i className="bi bi-exclamation-triangle-fill me-2 fs-5" />
           <div className="flex-grow-1">{error}</div>
+          <button type="button" className="btn btn-outline-danger btn-sm" onClick={cargar} disabled={loading}>
+            Reintentar
+          </button>
           <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Cerrar" />
         </div>
       )}
@@ -211,10 +227,13 @@ export default function UsuariosPage() {
                   className="form-control"
                   placeholder="Buscar por nombre, apellidos o correo institucional…"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
                 />
                 {search && (
-                  <button className="btn btn-outline-secondary" type="button" onClick={() => setSearch('')}>
+                  <button className="btn btn-outline-secondary" type="button" onClick={() => { setSearch(''); setPage(1); }}>
                     <i className="bi bi-x-lg" />
                   </button>
                 )}
@@ -226,7 +245,10 @@ export default function UsuariosPage() {
               <select
                 className="form-select form-select-sm"
                 value={filtroEstado}
-                onChange={(e) => setFiltroEstado(e.target.value)}
+                onChange={(e) => {
+                  setFiltroEstado(e.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="todos">Todos los estados</option>
                 <option value="activo">Solo Activos</option>
@@ -239,7 +261,10 @@ export default function UsuariosPage() {
               <select
                 className="form-select form-select-sm"
                 value={filtroRol}
-                onChange={(e) => setFiltroRol(e.target.value)}
+                onChange={(e) => {
+                  setFiltroRol(e.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="todos">Todos los roles</option>
                 <option value="estudiante">Estudiantes</option>
@@ -253,7 +278,10 @@ export default function UsuariosPage() {
               <select
                 className="form-select form-select-sm"
                 value={filtroCorreo}
-                onChange={(e) => setFiltroCorreo(e.target.value)}
+                onChange={(e) => {
+                  setFiltroCorreo(e.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="todos">Cualquier dominio de correo</option>
                 <option value="institucional">Institucional (@ucr.ac.cr)</option>
@@ -270,13 +298,13 @@ export default function UsuariosPage() {
           <div className="spinner-border text-danger" role="status" />
           <p className="mt-2 text-secondary">Cargando usuarios registrados…</p>
         </div>
-      ) : usuariosFiltrados.length === 0 ? (
+      ) : usuarios.length === 0 ? (
         <div className="card border-0 shadow-sm">
           <div className="card-body text-center py-5">
             <i className="bi bi-people text-secondary fs-1 mb-2 d-block" />
             <h5 className="fw-semibold text-secondary">No se encontraron usuarios</h5>
             <p className="text-muted small mb-0">
-              No hay registros que coincidan con los filtros aplicados en esta página.
+              No hay usuarios que coincidan con la búsqueda y los filtros aplicados.
             </p>
           </div>
         </div>
@@ -284,15 +312,14 @@ export default function UsuariosPage() {
         <>
           <div className="d-flex justify-content-between align-items-center mb-2 px-1">
             <span className="text-secondary small">
-              Mostrando <strong>{usuariosFiltrados.length}</strong> de <strong>{totalCount}</strong> usuarios
+              Mostrando <strong>{usuarios.length}</strong> de <strong>{totalCount}</strong> usuarios coincidentes
             </span>
             <span className="badge bg-light text-secondary border">Página {page} de {totalPages}</span>
           </div>
 
           {/* Cards responsivas para móvil */}
           <div className="d-md-none">
-            {usuariosFiltrados.map((u) => {
-              const userVehs = vehiculosPorUsuario[u.id] || [];
+            {usuarios.map((u) => {
               const totalVehiculos = u.cantidad_vehiculos;
               const esInstitucional = u.email && u.email.toLowerCase().endsWith('@ucr.ac.cr');
               const isExpanded = expandedUserId === u.id;
@@ -326,10 +353,13 @@ export default function UsuariosPage() {
                       <span>Rol: <strong className="text-uppercase">{u.rol || 'Estudiante'}</strong></span>
                       <button
                         className="btn btn-outline-primary btn-sm py-0 px-2"
-                        onClick={() => setExpandedUserId(isExpanded ? null : u.id)}
+                        onClick={() => toggleVehiculos(u)}
+                        disabled={cargandoVehiculosUsuario !== null}
                       >
-                        <i className="bi bi-truck me-1" />
-                        {totalVehiculos ?? '—'} vehículo{totalVehiculos !== 1 ? 's' : ''}
+                        <i className="bi bi-car-front me-1" />
+                        {cargandoVehiculosUsuario === u.id
+                          ? 'Cargando...'
+                          : `${totalVehiculos ?? '-'} vehículo${totalVehiculos !== 1 ? 's' : ''}`}
                       </button>
                     </div>
 
@@ -337,20 +367,7 @@ export default function UsuariosPage() {
                     {isExpanded && (
                       <div className="mt-2 p-2 bg-light rounded border small">
                         <strong className="d-block mb-1 text-primary">Vehículos asociados:</strong>
-                        <p className="text-muted mb-1">{vehiculosError ? 'No se pudo cargar el detalle de vehículos.' : 'Detalle parcial: solo se muestra la primera página de vehículos.'}</p>
-                        {userVehs.length === 0 ? (
-                          <span className="text-muted fst-italic">
-                            {vehiculosError ? 'Detalle no disponible.' : totalVehiculos == null ? 'Total de vehículos no disponible.' : totalVehiculos > 0 ? 'Hay vehículos asociados, pero sus detalles no están cargados en esta página.' : 'Sin vehículos activos registrados.'}
-                          </span>
-                        ) : (
-                          <ul className="list-unstyled mb-0">
-                            {userVehs.map((v) => (
-                              <li key={v.id} className="py-1 border-bottom border-secondary border-opacity-10">
-                                <strong>{v.placa}</strong> — {v.marca} {v.modelo} ({v.capacidad} asientos)
-                              </li>
-                            ))}
-                          </ul>
-                        )}
+                        {renderDetalleVehiculos(u)}
                       </div>
                     )}
 
@@ -389,8 +406,7 @@ export default function UsuariosPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {usuariosFiltrados.map((u) => {
-                      const userVehs = vehiculosPorUsuario[u.id] || [];
+                    {usuarios.map((u) => {
                       const totalVehiculos = u.cantidad_vehiculos;
                       const esInstitucional = u.email && u.email.toLowerCase().endsWith('@ucr.ac.cr');
                       const isExpanded = expandedUserId === u.id;
@@ -433,27 +449,23 @@ export default function UsuariosPage() {
                           </td>
                           <td className="text-center">
                             <button
-                              className={`btn btn-sm ${
-                                userVehs.length > 0 ? 'btn-outline-primary' : 'btn-outline-secondary disabled'
-                              }`}
-                              onClick={() => setExpandedUserId(isExpanded ? null : u.id)}
-                              title={userVehs.length > 0 ? 'Ver detalles de vehículos' : (totalVehiculos > 0 ? 'Hay vehículos asociados, pero el detalle no está cargado' : 'Sin vehículos')}
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() => toggleVehiculos(u)}
+                              disabled={cargandoVehiculosUsuario !== null}
+                              title="Ver detalles de vehículos activos"
                             >
-                              <i className="bi bi-truck me-1" />
-                              <span className="fw-bold">{totalVehiculos ?? '—'}</span>
+                              <i className="bi bi-car-front me-1" />
+                              <span className="fw-bold">
+                                {cargandoVehiculosUsuario === u.id ? 'Cargando...' : totalVehiculos ?? '-'}
+                              </span>
                               <i className={`bi bi-chevron-${isExpanded ? 'up' : 'down'} ms-1`} />
                             </button>
 
                             {/* Panel desplegable en la fila */}
-                            {isExpanded && userVehs.length > 0 && (
+                            {isExpanded && (
                               <div className="p-2 mt-2 bg-light rounded text-start small border">
-                                <strong className="text-primary d-block mb-1">Vehículos de {u.first_name || u.email}:</strong>
-                                <p className="text-muted mb-1">Detalle parcial: solo se muestra la primera página de vehículos.</p>
-                                {userVehs.map((v) => (
-                                  <div key={v.id} className="py-1 border-bottom border-white">
-                                    <span className="badge bg-dark me-1">{v.placa}</span> {v.marca} {v.modelo} (Cap: {v.capacidad})
-                                  </div>
-                                ))}
+                                <strong className="text-primary d-block mb-1">Vehículos activos de {u.first_name || u.email}:</strong>
+                                {renderDetalleVehiculos(u)}
                               </div>
                             )}
                           </td>

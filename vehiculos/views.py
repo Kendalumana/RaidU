@@ -22,6 +22,27 @@ def vehiculos_api(request):
         if not request.user.is_staff and not soporte:
             vehiculos = vehiculos.filter(propietario=request.user)
 
+        propietario = request.query_params.get('propietario')
+        if propietario is not None:
+            try:
+                propietario_id = int(propietario)
+            except (TypeError, ValueError):
+                return Response({'detail': 'Propietario no valido.'}, status=status.HTTP_400_BAD_REQUEST)
+            if propietario_id < 1:
+                return Response({'detail': 'Propietario no valido.'}, status=status.HTTP_400_BAD_REQUEST)
+            vehiculos = vehiculos.filter(propietario_id=propietario_id)
+
+        activo = request.query_params.get('activo')
+        if activo is not None:
+            valor_activo = activo.strip().lower()
+            if valor_activo in ('true', '1'):
+                activo = True
+            elif valor_activo in ('false', '0'):
+                activo = False
+            else:
+                return Response({'detail': 'Estado de vehiculo no valido.'}, status=status.HTTP_400_BAD_REQUEST)
+            vehiculos = vehiculos.filter(activo=activo)
+
         buscar = request.query_params.get('search', '').strip()
         if buscar:
             # Q permite buscar en placa, marca o modelo con el mismo texto.

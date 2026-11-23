@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 const initial = {
   viaje: '',
-  cupos: 1,
+  cupos: '',
 };
 
 const nombresSede = {
@@ -26,6 +26,7 @@ function formatFechaCorta(fechaIso) {
 export default function FormReserva({
   reserva,
   viajes,
+  cargandoViajes = false,
   userId,
   viajesReservadosIds = new Set(),
   onSave,
@@ -70,7 +71,7 @@ export default function FormReserva({
     } else {
       setForm({
         viaje: '',
-        cupos: 1,
+        cupos: '',
       });
     }
   }, [reserva]);
@@ -79,19 +80,25 @@ export default function FormReserva({
     (viaje) => Number(viaje.id) === Number(form.viaje)
   );
 
-  // Al editar: restrictivo, solo se permite mantener o reducir cupos previamente reservados
-  // Al crear: el tope son los cupos disponibles actuales del viaje
-  const maxCupos = reserva
-    ? Number(reserva.cupos)
-    : Number(viajeSeleccionado?.cupos_disponibles || 1);
+  const maxCupos = Number(reserva?.cupos || 0) + Number(viajeSeleccionado?.cupos_disponibles || 0);
 
   const change = ({ target }) => {
     const { name, value } = target;
 
-    setForm((actual) => ({
-      ...actual,
-      [name]: value,
-    }));
+    setForm((actual) => {
+      if (name === 'viaje' && !reserva) {
+        const viaje = viajes.find((item) => Number(item.id) === Number(value));
+        const maximo = Number(viaje?.cupos_disponibles || 1);
+        const cuposActuales = Number(actual.cupos) || 1;
+        return {
+          ...actual,
+          viaje: value,
+          cupos: Math.min(cuposActuales, maximo),
+        };
+      }
+
+      return { ...actual, [name]: value };
+    });
   };
 
   const submit = async (event) => {
@@ -125,18 +132,23 @@ export default function FormReserva({
 
             <small className="text-secondary">
               {reserva
-                ? `Modifique la cantidad de cupos (máximo sus ${reserva.cupos} cupos reservados actuales; solo puede mantener o liberar cupos).`
+                ? `Modifique la cantidad de cupos de su reserva.`
                 : 'Seleccione un viaje disponible y la cantidad de cupos.'}
             </small>
           </div>
         </div>
 
-        {!reserva && viajesDisponibles.length === 0 && (
-          <div className="alert alert-warning">
+        {cargandoViajes ? (
+          <div className="alert alert-info py-2 d-flex align-items-center mb-3">
+            <span className="spinner-border spinner-border-sm me-2" role="status" />
+            <span>Cargando viajes disponibles...</span>
+          </div>
+        ) : !reserva && viajesDisponibles.length === 0 ? (
+          <div className="alert alert-warning py-2 mb-3">
             <i className="bi bi-exclamation-triangle me-2" />
             No hay viajes disponibles para reservar en este momento.
           </div>
-        )}
+        ) : null}
 
         <form onSubmit={submit}>
           <div className="row g-3">
@@ -156,11 +168,11 @@ export default function FormReserva({
                 className="form-select"
                 value={form.viaje}
                 onChange={change}
-                disabled={Boolean(reserva)}
+                disabled={Boolean(reserva) || cargandoViajes || saving}
                 required
               >
                 <option value="">
-                  Seleccione un viaje...
+                  {cargandoViajes ? 'Cargando viajes disponibles...' : 'Seleccione un viaje...'}
                 </option>
 
                 {(reserva
@@ -197,22 +209,27 @@ export default function FormReserva({
                 Cupos *
               </label>
 
-              <input
+              <select
                 id="reserva-cupos"
                 name="cupos"
-                type="number"
-                min="1"
-                max={maxCupos}
-                className="form-control"
+                className="form-select"
                 value={form.cupos}
                 onChange={change}
+                disabled={!viajeSeleccionado || saving || cargandoViajes}
                 required
-              />
+              >
+                {!viajeSeleccionado && <option value="">Seleccione un viaje primero</option>}
+                {viajeSeleccionado && Array.from({ length: maxCupos }, (_, index) => index + 1).map((cantidad) => (
+                  <option key={cantidad} value={cantidad}>
+                    {cantidad} {cantidad === 1 ? 'cupo' : 'cupos'}
+                  </option>
+                ))}
+              </select>
 
               {viajeSeleccionado && (
                 <small className="text-secondary d-block mt-1">
                   {reserva
-                    ? `Tope permitido: ${maxCupos} cupo(s) (solo reducción)`
+                    ? `${reserva.cupos} reservados + ${viajeSeleccionado.cupos_disponibles} libres = máximo ${maxCupos}`
                     : `Disponibles en viaje: ${maxCupos}`}
                 </small>
               )}
@@ -225,6 +242,8 @@ export default function FormReserva({
               className="btn btn-primary"
               disabled={
                 saving ||
+                cargandoViajes ||
+                !form.viaje ||
                 (!reserva &&
                   viajesDisponibles.length === 0)
               }

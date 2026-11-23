@@ -6,6 +6,8 @@ from .models import Viaje
 
 class ViajeSerializer(serializers.ModelSerializer):
     cupos_totales = serializers.IntegerField(min_value=1, max_value=32767)
+    vehiculo_placa = serializers.CharField(source='vehiculo.placa', read_only=True)
+    conductor_correo = serializers.EmailField(source='conductor.email', read_only=True, allow_blank=True)
 
     class Meta:
         model = Viaje
@@ -55,7 +57,8 @@ class ViajeSerializer(serializers.ModelSerializer):
                 sede_destino = self.instance.sede_destino
 
             ocupados = self.instance.cupos_totales - self.instance.cupos_disponibles
-            disponibles = cupos_totales - ocupados
+            reservables = serializers.BooleanField(required=False)
+    disponibles = cupos_totales - ocupados
             if disponibles < 0:
                 raise serializers.ValidationError({
                     'cupos_totales': 'Los cupos no pueden ser menores a los cupos ya ocupados.'
@@ -91,4 +94,7 @@ class FiltrosViajeSerializer(serializers.Serializer):
     fecha = serializers.DateField(required=False)
     estado = serializers.ChoiceField(choices=Viaje.Estado.choices, required=False)
     cupos_minimos = serializers.IntegerField(min_value=0, max_value=32767, required=False)
+    reservables = serializers.BooleanField(required=False)
+    disponibles = serializers.BooleanField(required=False)
+    mis_viajes = serializers.BooleanField(required=False)
     ordering = serializers.ChoiceField(choices=['fecha_hora', '-fecha_hora', 'costo_total', '-costo_total'], required=False)

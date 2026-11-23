@@ -38,19 +38,14 @@ function EstrellasPuntaje({ valor, size = '1.1rem', interactive = false, onChang
       {[1, 2, 3, 4, 5].map((estrella) => {
         const activa = (hover || valor) >= estrella;
         return (
-          <i
-            key={estrella}
-            className={`bi ${activa ? 'bi-star-fill text-warning' : 'bi-star text-secondary opacity-50'}`}
-            style={{
-              fontSize: size,
-              cursor: interactive ? 'pointer' : 'default',
-              transition: 'transform 0.15s ease, color 0.15s ease',
-              transform: interactive && hover === estrella ? 'scale(1.2)' : 'scale(1)',
-            }}
-            onClick={() => interactive && onChange(estrella)}
-            onMouseEnter={() => interactive && setHover(estrella)}
-            onMouseLeave={() => interactive && setHover(0)}
-          />
+          interactive ? (
+            <button key={estrella} type="button" className="btn p-0 border-0" aria-label={`${estrella} de 5 estrellas`} aria-pressed={valor === estrella}
+              onClick={() => onChange(estrella)} onMouseEnter={() => setHover(estrella)} onMouseLeave={() => setHover(0)}>
+              <i aria-hidden="true" className={`bi ${activa ? 'bi-star-fill text-warning' : 'bi-star text-secondary'}`} style={{ fontSize: size }} />
+            </button>
+          ) : (
+            <i key={estrella} className={`bi ${activa ? 'bi-star-fill text-warning' : 'bi-star text-secondary'}`} style={{ fontSize: size }} />
+          )
         );
       })}
     </div>
@@ -310,8 +305,10 @@ export default function CalificacionesPage() {
   };
 
   // Confirmar eliminación
+  const [eliminando, setEliminando] = useState(false);
   const confirmarEliminar = async () => {
-    if (!modalEliminar) return;
+    if (!modalEliminar || eliminando) return;
+    setEliminando(true);
     try {
       await deleteCalificacion(modalEliminar.id);
       setExito(`Calificación #${modalEliminar.id} eliminada.`);
@@ -321,6 +318,8 @@ export default function CalificacionesPage() {
     } catch (err) {
       setError(getError(err));
       setModalEliminar(null);
+    } finally {
+      setEliminando(false);
     }
   };
 
@@ -928,6 +927,7 @@ export default function CalificacionesPage() {
                   <button
                     type="button"
                     className="btn-close"
+                    disabled={eliminando}
                     onClick={() => setModalEliminar(null)}
                     aria-label="Cerrar"
                   />
@@ -945,6 +945,7 @@ export default function CalificacionesPage() {
                   <button
                     type="button"
                     className="btn btn-outline-secondary"
+                    disabled={eliminando}
                     onClick={() => setModalEliminar(null)}
                   >
                     Cancelar
@@ -952,6 +953,7 @@ export default function CalificacionesPage() {
                   <button
                     type="button"
                     className="btn btn-danger"
+                    disabled={eliminando}
                     onClick={confirmarEliminar}
                   >
                     Sí, eliminar

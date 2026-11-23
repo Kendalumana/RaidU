@@ -13,21 +13,14 @@ export default function AppLayout() {
 
   const navItems = [
     { to: '/', end: true, icon: 'bi-speedometer2', label: 'Inicio' },
-    { to: '/vehiculos', icon: 'bi-truck', label: 'Vehículos' },
+    { to: '/vehiculos', icon: 'bi-car-front', label: 'Vehículos' },
     { to: '/viajes', icon: 'bi-map', label: 'Viajes' },
     { to: '/reservas', icon: 'bi-bookmark-check', label: 'Reservas' },
     { to: '/calificaciones', icon: 'bi-star', label: 'Calificaciones' },
     ...(esStaff
       ? [{ to: '/usuarios', icon: 'bi-people-fill', label: 'Usuarios UCR' }]
       : []),
-    { to: '/perfil', icon: 'bi-person-circle', label: 'Mi Perfil' },
   ];
-
-  // En móvil: Lo personal (Perfil y Calificaciones) se accede desde
-  // el menú superior derecho del avatar, para no duplicarlo en el drawer.
-  const navItemsMovil = navItems.filter(
-    (item) => item.to !== '/calificaciones' && item.to !== '/perfil'
-  );
 
   return (
     <div className="app-shell">
@@ -86,7 +79,7 @@ export default function AppLayout() {
 
             <p className="sidebar-label">Navegación</p>
             <nav className="nav flex-column gap-2">
-              {navItemsMovil.map((item) => {
+              {navItems.map((item) => {
                 const activo = item.end
                   ? location.pathname === item.to
                   : location.pathname.startsWith(item.to);
@@ -139,20 +132,6 @@ export default function AppLayout() {
               <i className="bi bi-list fs-4 text-dark" />
             </button>
             <UcrLogo compact height={32} />
-          </div>
-
-          {/* Barra de búsqueda interactiva (desktop) */}
-          <div className="topbar-search d-none d-md-block position-relative">
-            <i
-              className="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary"
-              style={{ fontSize: '0.85rem' }}
-            />
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Buscar viajes, rutas, conductores o sedes..."
-              aria-label="Buscar"
-            />
           </div>
 
           {/* Menú de perfil a la derecha con dropdown interactivo */}

@@ -26,11 +26,11 @@ export default function ProfileDropdown() {
   };
 
   const rolColors = {
-    admin: { bg: '#fee2e2', text: '#991b1b', label: 'Admin' },
-    soporte: { bg: '#fef3c7', text: '#92400e', label: 'Soporte' },
+    admin: { clase: 'admin', icono: 'bi-shield-lock-fill', label: 'Admin' },
+    soporte: { clase: 'soporte', icono: 'bi-headset', label: 'Soporte' },
     estudiante: {
-      bg: esConductor ? '#ecfdf5' : '#e0e7ff',
-      text: esConductor ? '#065f46' : '#3730a3',
+      clase: esConductor ? 'conductor' : 'estudiante',
+      icono: esConductor ? 'bi-car-front-fill' : 'bi-mortarboard-fill',
       label: esConductor ? 'Estudiante / Conductor' : 'Estudiante UCR',
     },
   };
@@ -40,7 +40,7 @@ export default function ProfileDropdown() {
 
   return (
     <div className="position-relative" ref={dropdownRef}>
-      {/* Botón trigger estilo Dribbble */}
+      {/* Botón trigger del menú de perfil */}
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -48,18 +48,17 @@ export default function ProfileDropdown() {
         style={{
           cursor: 'pointer',
           transition: 'all 0.2s ease',
-          outline: 'none',
         }}
         aria-expanded={open}
       >
-        {/* Avatar redondo con gradiente suave */}
+        {/* Avatar redondo con gradiente institucional */}
         <div
           className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
           style={{
-            width: 40,
-            height: 40,
-            background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-            fontSize: '1rem',
+            width: 38,
+            height: 38,
+            background: 'linear-gradient(135deg, var(--raidu-primary), var(--raidu-accent))',
+            fontSize: '0.95rem',
           }}
         >
           {initial}
@@ -67,26 +66,17 @@ export default function ProfileDropdown() {
 
         {/* Nombre y rol en pantallas medianas/grandes */}
         <div className="d-none d-md-flex flex-column text-start" style={{ lineHeight: 1.2 }}>
-          <span className="fw-semibold text-dark small" style={{ fontSize: '0.875rem' }}>
+          <span className="fw-semibold text-dark small" style={{ fontSize: '0.86rem' }}>
             {user?.first_name ? `${user.first_name} ${user.last_name || ''}` : user?.username || 'Usuario'}
           </span>
-          <span
-            className="badge rounded-pill mt-1"
-            style={{
-              backgroundColor: currentRol.bg,
-              color: currentRol.text,
-              fontSize: '0.65rem',
-              fontWeight: 600,
-              letterSpacing: '0.04em',
-              width: 'fit-content',
-            }}
-          >
+          <span className={`role-badge role-badge--${currentRol.clase} mt-1`} style={{ fontSize: '0.64rem', padding: '0.18rem 0.55rem' }}>
+            <i className={`bi ${currentRol.icono}`} aria-hidden="true" />
             {currentRol.label}
           </span>
         </div>
 
         <i
-          className={`bi bi-chevron-down text-secondary ms-1 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`bi bi-chevron-down text-secondary ms-1 ${open ? 'rotate-180' : ''}`}
           style={{
             fontSize: '0.75rem',
             transform: open ? 'rotate(180deg)' : 'none',
@@ -98,24 +88,24 @@ export default function ProfileDropdown() {
       {/* Menú desplegable */}
       {open && (
         <div
-          className="position-absolute end-0 mt-2 shadow-lg bg-white rounded-4 border-0 p-2"
+          className="position-absolute end-0 mt-2 bg-white rounded-4 p-2"
           style={{
-            minWidth: 260,
+            minWidth: 264,
             zIndex: 1050,
             animation: 'fadeIn 0.15s ease-out',
-            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.08)',
-            border: '1px solid rgba(226, 232, 240, 0.8)',
+            boxShadow: 'var(--shadow-lg)',
+            border: '1px solid var(--slate-200)',
           }}
         >
           {/* Header del dropdown */}
           <div className="p-3 border-bottom d-flex align-items-center gap-3">
             <div
-              className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+              className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
               style={{
                 width: 44,
                 height: 44,
-                background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-                fontSize: '1.1rem',
+                background: 'linear-gradient(135deg, var(--raidu-primary), var(--raidu-accent))',
+                fontSize: '1.05rem',
               }}
             >
               {initial}
@@ -127,14 +117,8 @@ export default function ProfileDropdown() {
               <p className="text-secondary small mb-1 text-truncate" style={{ fontSize: '0.75rem' }}>
                 {user?.email || 'estudiante@ucr.ac.cr'}
               </p>
-              <span
-                className="badge rounded-pill"
-                style={{
-                  backgroundColor: currentRol.bg,
-                  color: currentRol.text,
-                  fontSize: '0.65rem',
-                }}
-              >
+              <span className={`role-badge role-badge--${currentRol.clase}`} style={{ fontSize: '0.65rem', padding: '0.2rem 0.55rem' }}>
+                <i className={`bi ${currentRol.icono}`} aria-hidden="true" />
                 {currentRol.label}
               </span>
             </div>

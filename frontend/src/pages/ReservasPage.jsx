@@ -82,7 +82,19 @@ function AccionesReserva({ viaje, reserva, onEditar, onCancelar, onEliminar, esS
     return <span className="small text-secondary">Sin acciones</span>;
   }
   if (viaje?.estado === 'finalizado') {
-    return esSoporte ? <span>Solo lectura</span> : <button type="button" className="btn btn-outline-warning btn-sm" onClick={() => navigate(`/calificaciones?viaje=${reserva.viaje}`)}>Calificar</button>;
+    return esSoporte ? (
+      <span className="small text-secondary">Solo lectura</span>
+    ) : (
+      <button
+        type="button"
+        className="btn btn-outline-warning btn-sm d-inline-flex align-items-center gap-1"
+        onClick={() => navigate(`/calificaciones?viaje=${reserva.viaje}`)}
+        title="Calificar participantes del viaje"
+      >
+        <i className="bi bi-star-fill" aria-hidden="true" />
+        Calificar
+      </button>
+    );
   }
   if (!viaje || viaje.estado === 'cancelado' || viaje.estado === 'en_curso' || esPasadoViaje(viaje)) {
     return <span className="small text-secondary">Sin acciones</span>;

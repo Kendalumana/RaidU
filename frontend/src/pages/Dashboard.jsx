@@ -216,18 +216,22 @@ export default function Dashboard() {
   return (
     <div className="d-flex flex-column gap-4">
       {/* ── Encabezado de Inicio ── */}
-      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
+      <div className="welcome-banner d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
         <div>
-          <h1 className="h4 fw-bold text-dark mb-1">Inicio • Movilidad UCR</h1>
-          <p className="text-secondary small mb-0">
-            Plataforma oficial de transporte compartido UCR • Sede del Pacífico
+          <span className="badge rounded-pill mb-2" style={{ background: 'rgba(255,255,255,0.16)', color: '#fff', fontSize: '0.72rem' }}>
+            <i className="bi bi-geo-alt-fill me-1" />
+            UCR • Sede del Pacífico
+          </span>
+          <h1 className="h4 fw-bold mb-1">Inicio • Movilidad UCR</h1>
+          <p className="small mb-0">
+            Plataforma oficial de transporte compartido universitario
           </p>
         </div>
 
         {/* Badge de usuario */}
-        <div className="d-flex align-items-center gap-2">
-          <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
-            <i className="bi bi-person-circle me-1" />
+        <div className="d-flex align-items-center flex-wrap gap-2">
+          <span className="role-badge">
+            <i className="bi bi-person-circle" />
             {user?.first_name || user?.username || 'Estudiante'} • {rol?.toUpperCase() || 'ESTUDIANTE'}
           </span>
           {esStaff && (
@@ -241,10 +245,10 @@ export default function Dashboard() {
 
       {/* ── Panel Staff Exclusivo (si es Admin o Soporte) ── */}
       {esStaff && (
-        <div className="alert bg-white border shadow-sm rounded-4 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div className="alert bg-white border border-start border-4 border-danger shadow-sm rounded-4 p-3 d-flex align-items-center justify-content-between flex-wrap gap-3 mb-0">
           <div className="d-flex align-items-center gap-3">
-            <div className="rounded-circle bg-danger bg-opacity-10 p-2 text-danger">
-              <i className="bi bi-shield-lock-fill fs-4" />
+            <div className="stat-icon bg-danger bg-opacity-10 text-danger">
+              <i className="bi bi-shield-lock-fill" />
             </div>
             <div>
               <div className="fw-bold text-dark">Acceso de Personal ({rol?.toUpperCase()})</div>
@@ -259,10 +263,22 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <Link to="/usuarios" className="btn btn-outline-danger btn-sm rounded-pill px-3">
-            <i className="bi bi-people-fill me-1" />
-            Ver Usuarios UCR
-          </Link>
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            {failedCards.totalUsuarios && !loadingCards.totalUsuarios && (
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                onClick={() => cargarLista('totalUsuarios', '/usuarios/?page=1')}
+              >
+                <i className="bi bi-arrow-clockwise me-1" />
+                Reintentar
+              </button>
+            )}
+            <Link to="/usuarios" className="btn btn-outline-danger btn-sm rounded-pill px-3">
+              <i className="bi bi-people-fill me-1" />
+              Ver Usuarios UCR
+            </Link>
+          </div>
         </div>
       )}
 
@@ -272,37 +288,53 @@ export default function Dashboard() {
           <div className="col-12 col-sm-6 col-xl-3" key={card.id}>
             <div className="h-100 d-flex flex-column gap-2">
               <Link to={card.to} className="text-decoration-none flex-grow-1">
-                <div className="stat-card-white h-100 d-flex flex-column justify-content-between">
-                  <div className="d-flex justify-content-between align-items-start mb-3">
+                <div className={`stat-card-white h-100 d-flex flex-column justify-content-between ${card.unavailable && !card.loading ? 'is-error' : ''}`}>
+                  <div className="d-flex justify-content-between align-items-start gap-2 mb-3">
                     <div
-                      className="rounded-3 d-flex align-items-center justify-content-center"
+                      className="stat-icon"
                       style={{
-                        width: 44,
-                        height: 44,
                         backgroundColor: card.iconBg,
                         color: card.iconColor,
                       }}
                     >
-                      <i className={`bi ${card.icon} fs-5`} />
+                      <i className={`bi ${card.icon}`} aria-hidden="true" />
                     </div>
-                    <span className={`badge rounded-pill px-2 py-1 small fw-medium ${card.loading ? 'text-secondary bg-light' : card.unavailable ? 'text-danger bg-danger-subtle' : card.pillColor}`}>
+                    <span className={`badge rounded-pill px-2 py-1 small fw-semibold ${card.loading ? 'text-secondary bg-light' : card.unavailable ? 'text-danger bg-danger-subtle' : card.pillColor}`}>
                       {card.loading ? 'Cargando...' : card.unavailable ? 'Error de consulta' : card.pill}
                     </span>
                   </div>
 
                   <div>
-                    <div className="h3 fw-bold text-dark mb-0">
-                      {card.loading ? <span className="spinner-border spinner-border-sm text-primary" role="status" aria-label="Cargando" /> : card.value}
+                    <div className={`stat-value ${!card.loading && typeof card.value === 'string' && card.value.length > 5 ? 'is-text' : ''}`}>
+                      {card.loading ? (
+                        <span
+                          className="skeleton"
+                          style={{ width: 72, height: 28 }}
+                          role="status"
+                          aria-label="Cargando"
+                        />
+                      ) : (
+                        card.value
+                      )}
                     </div>
-                    <div className="text-secondary small fw-medium mt-1">{card.label}</div>
-                    <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
-                      {card.loading ? 'Cargando...' : card.unit}
+                    <div className="text-dark small fw-semibold mt-2">{card.label}</div>
+                    <div className="text-muted small mt-1" style={{ fontSize: '0.76rem' }}>
+                      {card.loading ? (
+                        <span className="skeleton" style={{ width: '70%', height: 12 }} />
+                      ) : (
+                        card.unit
+                      )}
                     </div>
                   </div>
                 </div>
               </Link>
               {card.unavailable && !card.loading && (
-                <button type="button" className="btn btn-outline-primary btn-sm" onClick={card.retry}>
+                <button
+                  type="button"
+                  className="btn btn-outline-primary btn-sm d-inline-flex align-items-center justify-content-center gap-1"
+                  onClick={card.retry}
+                >
+                  <i className="bi bi-arrow-clockwise" aria-hidden="true" />
                   Reintentar {card.id === 'calificaciones' ? 'calificación' : card.label.toLowerCase()}
                 </button>
               )}
@@ -310,9 +342,10 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
       {/* ── Accesos a los Módulos ── */}
       <div className="card-white p-4">
-        <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
           <div>
             <h5 className="fw-bold mb-1">
               <i className="bi bi-grid-fill text-primary me-2" />
@@ -320,16 +353,16 @@ export default function Dashboard() {
             </h5>
             <p className="text-secondary small mb-0">Acceso rápido a las operaciones del proyecto</p>
           </div>
-          <div className="d-flex gap-2">
+          <div className="d-flex gap-1 bg-light p-1 rounded-pill border">
             {['Todas', 'Operación', 'Gestión'].map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`btn btn-sm rounded-pill px-3 py-1 small fw-medium border-0 ${
-                  activeTab === tab ? 'bg-primary text-white shadow-sm' : 'text-secondary bg-light'
+                className={`btn btn-sm rounded-pill px-3 py-1 fw-semibold border-0 ${
+                  activeTab === tab ? 'btn-primary shadow-sm' : 'text-secondary bg-transparent'
                 }`}
-                style={{ fontSize: '0.75rem' }}
+                style={{ fontSize: '0.76rem' }}
               >
                 {tab}
               </button>

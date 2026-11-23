@@ -1,15 +1,30 @@
-import { useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
 import ProfileDropdown from './ProfileDropdown.jsx';
 import UcrLogo from './UcrLogo.jsx';
 
+// Presentación del rol autenticado (solo visual, no altera permisos).
+function obtenerRolVisual({ rol, esAdmin, esSoporte, esConductor }) {
+  if (esAdmin || rol === 'admin') {
+    return { clase: 'admin', icono: 'bi-shield-lock-fill', label: 'Admin', corto: 'Admin' };
+  }
+  if (esSoporte || rol === 'soporte') {
+    return { clase: 'soporte', icono: 'bi-headset', label: 'Soporte', corto: 'Soporte' };
+  }
+  if (esConductor) {
+    return { clase: 'conductor', icono: 'bi-car-front-fill', label: 'Estudiante · Conductor', corto: 'Conductor' };
+  }
+  return { clase: 'estudiante', icono: 'bi-mortarboard-fill', label: 'Estudiante', corto: 'Estudiante' };
+}
+
 export default function AppLayout() {
-  const { user, rol, esAdmin } = useAuth();
+  const { rol, esAdmin, esSoporte, esConductor } = useAuth();
   const location = useLocation();
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
 
   const esStaff = esAdmin || rol === 'admin' || rol === 'soporte';
+  const rolVisual = obtenerRolVisual({ rol, esAdmin, esSoporte, esConductor });
 
   const navItems = [
     { to: '/', end: true, icon: 'bi-speedometer2', label: 'Inicio' },
@@ -22,9 +37,25 @@ export default function AppLayout() {
       : []),
   ];
 
+  const titulosExtra = { '/perfil': 'Mi Perfil', '/ajustes': 'Ajustes' };
+  const seccionActual =
+    navItems.find((item) =>
+      item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
+    )?.label ||
+    titulosExtra[location.pathname] ||
+    'RaidU';
+
+  // Cerrar el menú móvil con Escape.
+  useEffect(() => {
+    if (!menuMovilAbierto) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setMenuMovilAbierto(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menuMovilAbierto]);
+
   return (
     <div className="app-shell">
-      {/* ── Sidebar Desktop Minimalista Blanco ── */}
+      {/* ── Sidebar de escritorio ── */}
       <aside className="app-sidebar">
         <div className="sidebar-brand">
           <UcrLogo />
@@ -39,74 +70,68 @@ export default function AppLayout() {
               end={item.end}
               className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
             >
-              <i className={`bi ${item.icon}`} />
+              <i className={`bi ${item.icon}`} aria-hidden="true" />
               <span>{item.label}</span>
             </NavLink>
           ))}
         </nav>
 
         <div className="sidebar-bottom">
+          <span className={`role-badge role-badge--${rolVisual.clase} mb-2`}>
+            <i className={`bi ${rolVisual.icono}`} aria-hidden="true" />
+            {rolVisual.label}
+          </span>
           <p className="fw-semibold text-dark mb-0">RaidU v2.0</p>
           <span>React 19 + Django REST</span>
         </div>
       </aside>
 
-      {/* ── Drawer / Menú Lateral para Móvil (Offcanvas limpio) ── */}
+      {/* ── Drawer de navegación móvil ── */}
       {menuMovilAbierto && (
         <div
-          className="d-lg-none position-fixed top-0 start-0 w-100 h-100"
-          style={{ zIndex: 1060, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(3px)' }}
+          className="mobile-drawer-backdrop d-lg-none"
           onClick={() => setMenuMovilAbierto(false)}
         >
           <div
-            className="bg-white h-100 d-flex flex-column p-4 shadow-lg"
-            style={{ width: '82%', maxWidth: 310, animation: 'slideRight 0.25s ease-out' }}
+            className="mobile-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menú de navegación"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header del Menú Móvil */}
-            <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+            <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
               <UcrLogo compact height={36} />
               <button
                 type="button"
-                className="btn btn-light rounded-circle p-2 d-flex align-items-center justify-content-center"
+                className="topbar-icon-btn"
                 onClick={() => setMenuMovilAbierto(false)}
                 aria-label="Cerrar menú"
-                style={{ width: 36, height: 36 }}
               >
                 <i className="bi bi-x-lg" />
               </button>
             </div>
 
+            <div className="mb-3">
+              <span className={`role-badge role-badge--${rolVisual.clase}`}>
+                <i className={`bi ${rolVisual.icono}`} aria-hidden="true" />
+                {rolVisual.label}
+              </span>
+            </div>
+
             <p className="sidebar-label">Navegación</p>
-            <nav className="nav flex-column gap-2">
-              {navItems.map((item) => {
-                const activo = item.end
-                  ? location.pathname === item.to
-                  : location.pathname.startsWith(item.to);
-                return (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.end}
-                    onClick={() => setMenuMovilAbierto(false)}
-                    className="d-flex align-items-center gap-3 px-3 py-2 rounded-3 text-decoration-none fw-medium"
-                    style={{
-                      backgroundColor: activo ? '#0284c7' : 'transparent',
-                      color: activo ? '#ffffff' : '#334155',
-                      fontSize: '0.92rem',
-                    }}
-                  >
-                    <i
-                      className={`bi ${item.icon}`}
-                      style={{
-                        fontSize: '1.2rem',
-                        color: activo ? '#ffffff' : '#64748b',
-                      }}
-                    />
-                    <span>{item.label}</span>
-                  </NavLink>
-                );
-              })}
+            <nav className="nav flex-column gap-1" aria-label="Menú móvil">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  onClick={() => setMenuMovilAbierto(false)}
+                  className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
+                >
+                  <i className={`bi ${item.icon}`} aria-hidden="true" />
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
             </nav>
 
             <div className="mt-auto pt-3 border-top text-center text-secondary small">
@@ -116,38 +141,44 @@ export default function AppLayout() {
         </div>
       )}
 
-      {/* ── Área Principal ── */}
+      {/* ── Área principal ── */}
       <div className="app-main">
-        {/* ── Topbar Minimalista ── */}
         <header className="app-topbar">
-          {/* Botón de Menú Hamburguesa + Logo en móvil */}
-          <div className="d-flex align-items-center gap-2 d-lg-none">
+          <div className="d-flex align-items-center gap-2 gap-sm-3 min-w-0" style={{ minWidth: 0 }}>
             <button
               type="button"
-              className="btn btn-light rounded-circle border-0 d-flex align-items-center justify-content-center"
+              className="topbar-icon-btn d-lg-none"
               onClick={() => setMenuMovilAbierto(true)}
-              style={{ width: 40, height: 40 }}
               aria-label="Abrir menú de navegación"
+              aria-expanded={menuMovilAbierto}
             >
-              <i className="bi bi-list fs-4 text-dark" />
+              <i className="bi bi-list fs-4" />
             </button>
-            <UcrLogo compact height={32} />
+            <span className="d-none d-sm-inline-flex d-lg-none">
+              <UcrLogo compact height={32} />
+            </span>
+            <div className="topbar-section">
+              <span className="topbar-section-eyebrow">RaidU · UCR</span>
+              <span className="topbar-section-title">{seccionActual}</span>
+            </div>
           </div>
 
-          {/* Menú de perfil a la derecha con dropdown interactivo */}
-          <div className="ms-auto d-flex align-items-center gap-3">
-            <div className="d-none d-sm-flex align-items-center gap-2 px-3 py-1 bg-light rounded-pill border">
-              <span className="spinner-grow spinner-grow-sm text-success" style={{ width: 8, height: 8 }} />
-              <span className="text-secondary small fw-medium" style={{ fontSize: '0.75rem' }}>
-                Sistema Conectado
-              </span>
-            </div>
-
+          <div className="ms-auto d-flex align-items-center gap-2 gap-md-3">
+            <span className="status-pill d-none d-md-inline-flex">
+              <span className="dot" aria-hidden="true" />
+              Sistema conectado
+            </span>
+            <span
+              className={`role-badge role-badge--${rolVisual.clase} d-inline-flex d-md-none`}
+              title={`Rol: ${rolVisual.label}`}
+            >
+              <i className={`bi ${rolVisual.icono}`} aria-hidden="true" />
+              {rolVisual.corto}
+            </span>
             <ProfileDropdown />
           </div>
         </header>
 
-        {/* ── Contenido de las páginas ── */}
         <main className="container-fluid p-3 p-md-4 p-xl-5">
           <Outlet />
         </main>

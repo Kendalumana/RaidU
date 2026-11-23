@@ -21,7 +21,7 @@
 
 ### B. Módulo de Vehículos
 1. **Propiedad Estricta:** Un usuario solo puede registrar, editar o eliminar vehículos que le pertenecen.
-2. **Formato de Placa:** Validación de placas costarricenses (3 letras y 3 números, o 6 dígitos).
+2. **Formato de Placa:** La placa es obligatoria, única y de hasta 15 caracteres. Se registra al crear el vehículo y se conserva al editarlo.
 3. **Integridad Referencial:** Si un vehículo está vinculado a viajes activos, la API rechaza su eliminación con `409 Conflict`.
 
 ### C. Módulo de Viajes

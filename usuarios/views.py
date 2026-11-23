@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.paginator import InvalidPage, Paginator
 from django.db import transaction
+from django.db.models import Q
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
@@ -43,6 +44,41 @@ def usuarios_api(request):
     if not request.user.is_staff and not es_soporte(request.user):
         return Response({'detail': 'Se requiere administrador o soporte.'}, status=status.HTTP_403_FORBIDDEN)
     usuarios = get_user_model().objects.select_related('perfil').order_by('id')
+
+    buscar = request.query_params.get('search', '').strip()
+    if buscar:
+        usuarios = usuarios.filter(
+            Q(first_name__icontains=buscar) | Q(last_name__icontains=buscar)
+            | Q(email__icontains=buscar) | Q(username__icontains=buscar)
+        )
+
+    estado = request.query_params.get('estado', 'todos')
+    if estado == 'activo':
+        usuarios = usuarios.filter(is_active=True)
+    elif estado == 'inactivo':
+        usuarios = usuarios.filter(is_active=False)
+    elif estado != 'todos':
+        return Response({'detail': 'Estado de usuario no valido.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    rol = request.query_params.get('rol', 'todos')
+    if rol == 'admin':
+        usuarios = usuarios.filter(is_staff=True)
+    elif rol == 'soporte':
+        usuarios = usuarios.filter(is_staff=False, groups__name='Soporte')
+    elif rol == 'estudiante':
+        usuarios = usuarios.filter(is_staff=False).exclude(groups__name='Soporte')
+    elif rol != 'todos':
+        return Response({'detail': 'Rol de usuario no valido.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    correo = request.query_params.get('correo', 'todos')
+    if correo == 'institucional':
+        usuarios = usuarios.filter(email__iendswith='@ucr.ac.cr')
+    elif correo == 'no_institucional':
+        usuarios = usuarios.exclude(email__iendswith='@ucr.ac.cr')
+    elif correo != 'todos':
+        return Response({'detail': 'Tipo de correo no valido.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    usuarios = usuarios.distinct()
     paginator = Paginator(usuarios, 10)
     try:
         pagina = paginator.page(request.query_params.get('page', 1))

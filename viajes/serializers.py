@@ -57,8 +57,7 @@ class ViajeSerializer(serializers.ModelSerializer):
                 sede_destino = self.instance.sede_destino
 
             ocupados = self.instance.cupos_totales - self.instance.cupos_disponibles
-            reservables = serializers.BooleanField(required=False)
-    disponibles = cupos_totales - ocupados
+            disponibles = cupos_totales - ocupados
             if disponibles < 0:
                 raise serializers.ValidationError({
                     'cupos_totales': 'Los cupos no pueden ser menores a los cupos ya ocupados.'

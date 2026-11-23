@@ -117,40 +117,45 @@ export default function FormReserva({
   };
 
   return (
-    <section className="card border-0 shadow-sm rounded-4 mb-4">
-      <div className="card-body p-4">
-
-        <div className="d-flex align-items-center gap-2 mb-3">
-          <i className="bi bi-bookmark-plus text-primary fs-4" />
-
-          <div>
-            <h2 className="h5 fw-bold mb-0">
-              {reserva
-                ? `Editar reserva #${reserva.id}`
-                : 'Nueva reserva'}
-            </h2>
-
-            <small className="text-secondary">
-              {reserva
-                ? `Modifique la cantidad de cupos de su reserva.`
-                : 'Seleccione un viaje disponible y la cantidad de cupos.'}
-            </small>
-          </div>
+    <section className="card border-0 shadow-sm rounded-4 mb-4 border-top border-4 border-primary">
+      <div className="card-header bg-white py-3 border-bottom d-flex align-items-center gap-3">
+        <div
+          className="stat-icon"
+          style={{ width: 40, height: 40, backgroundColor: 'var(--raidu-primary-light)', color: 'var(--raidu-primary)', fontSize: '1.1rem' }}
+        >
+          <i className={`bi ${reserva ? 'bi-pencil-square' : 'bi-bookmark-plus'}`} aria-hidden="true" />
         </div>
 
+        <div>
+          <h2 className="h5 fw-bold mb-0">
+            {reserva
+              ? `Editar reserva #${reserva.id}`
+              : 'Nueva reserva'}
+          </h2>
+
+          <small className="text-secondary">
+            {reserva
+              ? 'Modifique la cantidad de cupos de su reserva.'
+              : 'Seleccione un viaje disponible y la cantidad de cupos.'}
+          </small>
+        </div>
+      </div>
+
+      <div className="card-body p-4">
         {cargandoViajes ? (
-          <div className="alert alert-info py-2 d-flex align-items-center mb-3">
+          <div className="alert alert-info py-2 d-flex align-items-center mb-3" role="status">
             <span className="spinner-border spinner-border-sm me-2" role="status" />
             <span>Cargando viajes disponibles...</span>
           </div>
         ) : !reserva && viajesDisponibles.length === 0 ? (
-          <div className="alert alert-warning py-2 mb-3">
-            <i className="bi bi-exclamation-triangle me-2" />
-            No hay viajes disponibles para reservar en este momento.
+          <div className="alert alert-warning py-2 d-flex align-items-center gap-2 mb-3" role="status">
+            <i className="bi bi-exclamation-triangle-fill flex-shrink-0" aria-hidden="true" />
+            <span>No hay viajes disponibles para reservar en este momento.</span>
           </div>
         ) : null}
 
         <form onSubmit={submit}>
+          <div className="form-section-title">Selección de viaje y cupos</div>
           <div className="row g-3">
 
             {/* VIAJE */}
@@ -159,7 +164,7 @@ export default function FormReserva({
                 className="form-label fw-semibold"
                 htmlFor="reserva-viaje"
               >
-                Viaje *
+                Viaje <span className="text-danger">*</span>
               </label>
 
               <select
@@ -206,7 +211,7 @@ export default function FormReserva({
                 className="form-label fw-semibold"
                 htmlFor="reserva-cupos"
               >
-                Cupos *
+                Cupos <span className="text-danger">*</span>
               </label>
 
               <select
@@ -227,7 +232,7 @@ export default function FormReserva({
               </select>
 
               {viajeSeleccionado && (
-                <small className="text-secondary d-block mt-1">
+                <small className="form-text d-block mt-1">
                   {reserva
                     ? `${reserva.cupos} reservados + ${viajeSeleccionado.cupos_disponibles} libres = máximo ${maxCupos}`
                     : `Disponibles en viaje: ${maxCupos}`}
@@ -236,10 +241,10 @@ export default function FormReserva({
             </div>
           </div>
 
-          <div className="d-flex gap-2 mt-4">
+          <div className="d-flex flex-wrap gap-2 mt-4 pt-3 border-top">
             <button
               type="submit"
-              className="btn btn-primary"
+              className="btn btn-primary px-4"
               disabled={
                 saving ||
                 cargandoViajes ||
@@ -248,13 +253,17 @@ export default function FormReserva({
                   viajesDisponibles.length === 0)
               }
             >
-              <i className="bi bi-save me-2" />
-
-              {saving
-                ? 'Guardando...'
-                : reserva
-                  ? 'Guardar cambios'
-                  : 'Crear reserva'}
+              {saving ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-check-lg me-1" aria-hidden="true" />
+                  {reserva ? 'Guardar cambios' : 'Crear reserva'}
+                </>
+              )}
             </button>
 
             {reserva && (

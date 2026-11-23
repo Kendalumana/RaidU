@@ -12,20 +12,33 @@ export default function FormViaje({
 }) {
   return (
     <div className="card border-0 shadow-sm mb-4 border-top border-4 border-success">
-      <div className="card-header bg-white py-3 border-bottom">
-        <h5 className="fw-bold mb-0 text-success">
-          <i className={`bi ${editId ? 'bi-pencil-square' : 'bi-plus-circle'} me-2`} />
-          {editId ? 'Modificar datos del viaje' : 'Publicar un nuevo viaje'}
-        </h5>
+      <div className="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div className="d-flex align-items-center gap-2">
+          <div
+            className="stat-icon"
+            style={{ width: 38, height: 38, backgroundColor: '#ecfdf5', color: '#0f9d6b', fontSize: '1.05rem' }}
+          >
+            <i className={`bi ${editId ? 'bi-pencil-square' : 'bi-plus-circle'}`} aria-hidden="true" />
+          </div>
+          <div>
+            <h5 className="fw-bold mb-0 text-dark">
+              {editId ? 'Modificar datos del viaje' : 'Publicar un nuevo viaje'}
+            </h5>
+            <small className="text-secondary">
+              Completá el vehículo, la ruta universitaria y el horario de salida.
+            </small>
+          </div>
+        </div>
       </div>
       <div className="card-body p-4">
         <form onSubmit={onSubmit}>
-          <div className="row g-3">
-                <div className="col-12">
-                  <label htmlFor="nombre" className="form-label fw-semibold">Nombre del viaje (opcional)</label>
-                  <input id="nombre" name="nombre" className="form-control" maxLength={100} value={form.nombre} onChange={onChange} disabled={saving} placeholder="Ej: Viaje a la U por la mañana" />
-                  <div className="form-text">Ayuda a reconocer este viaje en las reservas y calificaciones.</div>
-                </div>
+          <div className="form-section-title">Información general y vehículo</div>
+          <div className="row g-3 mb-4">
+            <div className="col-12">
+              <label htmlFor="nombre" className="form-label fw-semibold">Nombre del viaje (opcional)</label>
+              <input id="nombre" name="nombre" className="form-control" maxLength={100} value={form.nombre} onChange={onChange} disabled={saving} placeholder="Ej: Viaje a la U por la mañana" />
+              <div className="form-text">Ayuda a reconocer este viaje en las reservas y calificaciones.</div>
+            </div>
             {/* Selector de vehículo */}
             <div className="col-md-6 col-lg-4">
               <label htmlFor="vehiculo" className="form-label fw-semibold">
@@ -56,8 +69,8 @@ export default function FormViaje({
                 Asientos disponibles para pasajeros <span className="text-danger">*</span>
               </label>
               <div className="input-group">
-                <span className="input-group-text bg-light">
-                  <i className="bi bi-people-fill text-muted" />
+                <span className="input-group-text">
+                  <i className="bi bi-people-fill" aria-hidden="true" />
                 </span>
                 <input
                   id="cupos_totales"
@@ -70,7 +83,7 @@ export default function FormViaje({
                   onChange={onChange}
                   disabled={saving}
                 />
-                <span className="input-group-text bg-light text-muted small">
+                <span className="input-group-text small">
                   máx. {maxCupos}
                 </span>
                 {formErrors.cupos_totales && (
@@ -88,7 +101,7 @@ export default function FormViaje({
                 Costo total del viaje (₡ CRC) <span className="text-danger">*</span>
               </label>
               <div className="input-group">
-                <span className="input-group-text bg-light">₡</span>
+                <span className="input-group-text fw-semibold">₡</span>
                 <input
                   id="costo_total"
                   name="costo_total"
@@ -107,7 +120,10 @@ export default function FormViaje({
               </div>
               <div className="form-text">Monto total a compartir entre los pasajeros.</div>
             </div>
+          </div>
 
+          <div className="form-section-title">Ruta y horario</div>
+          <div className="row g-3">
             {/* Sede origen */}
             <div className="col-md-6">
               <label htmlFor="sede_origen" className="form-label fw-semibold">
@@ -209,11 +225,14 @@ export default function FormViaje({
           </div>
 
           {formErrors.non_field_errors && (
-            <div className="alert alert-danger mt-3 py-2">{formErrors.non_field_errors}</div>
+            <div className="alert alert-danger mt-3 py-2 d-flex align-items-center gap-2" role="alert">
+              <i className="bi bi-exclamation-triangle-fill flex-shrink-0" aria-hidden="true" />
+              <span>{formErrors.non_field_errors}</span>
+            </div>
           )}
 
-          <div className="d-flex gap-2 mt-4 pt-2 border-top">
-            <button type="submit" className="btn btn-success" disabled={saving}>
+          <div className="d-flex flex-wrap gap-2 mt-4 pt-3 border-top">
+            <button type="submit" className="btn btn-success px-4" disabled={saving}>
               {saving ? (
                 <>
                   <span className="spinner-border spinner-border-sm me-2" role="status" />

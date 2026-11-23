@@ -832,7 +832,8 @@ export default function ViajesPage() {
 
                           {!esSoporte && (esConductor(v) || esAdmin) && v.estado === 'en_curso' && (
                             <button
-                              className="btn btn-outline-secondary btn-sm"
+                              type="button"
+                              className="btn btn-outline-success btn-sm"
                               onClick={() => cambiarEstado(v, 'finalizado')}
                               title="Finalizar viaje"
                             >
@@ -843,18 +844,20 @@ export default function ViajesPage() {
                           {/* Calificar viaje si está finalizado Y el usuario participó */}
                           {(efectivo === 'finalizado') && esParticipante(v) && (
                             <button
-                              className="btn btn-outline-warning btn-sm text-dark d-inline-flex align-items-center gap-1"
+                              type="button"
+                              className="btn btn-outline-warning btn-sm d-inline-flex align-items-center gap-1"
                               onClick={() => navigate(`/calificaciones?viaje=${v.id}`)}
                               title="Calificar a los participantes de este viaje finalizado"
                             >
-                              <i className="bi bi-star-fill text-warning" />
+                              <i className="bi bi-star-fill" />
                               <span>Calificar</span>
                             </button>
                           )}
 
                           {puedeModificar(v) && (
                             <button
-                              className="btn btn-outline-warning btn-sm text-dark"
+                              type="button"
+                              className="btn btn-outline-warning btn-sm"
                               onClick={() => cambiarEstado(v, 'cancelado')}
                               title="Cancelar viaje"
                             >
@@ -864,11 +867,13 @@ export default function ViajesPage() {
 
                           {(esConductor(v) || esAdmin) && v.estado === 'publicado' && !pasado && (
                             <button
+                              type="button"
                               className="btn btn-outline-danger btn-sm"
                               onClick={() => eliminarViaje(v)}
                               title="Eliminar viaje"
+                              aria-label="Eliminar viaje"
                             >
-                              <i className="bi bi-trash" />
+                              <i className="bi bi-trash me-1" />Eliminar
                             </button>
                           )}
                         </div>

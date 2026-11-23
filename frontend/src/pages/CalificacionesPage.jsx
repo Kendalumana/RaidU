@@ -623,87 +623,59 @@ export default function CalificacionesPage() {
               )}
             </div>
           ) : (
-            <div className="table-responsive">
-              <table className="table table-hover align-middle">
-                <thead className="table-light">
-                  <tr>
-                    <th>ID</th>
-                    <th>Viaje</th>
-                    <th>Calificador</th>
-                    <th>Calificado</th>
-                    <th>Puntaje</th>
-                    <th>Comentario</th>
-                    <th>Fecha</th>
-                    <th className="text-end">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {calificaciones.map((calif) => {
-                    const viaje = viajesMap[calif.viaje];
-                    const esAutor = user?.id && Number(calif.calificador) === Number(user.id);
-                    const puedeModificar = (esAutor || esAdmin) && !esSoporte;
+            <>
+              {/* Vista móvil en tarjetas (< 768 px) */}
+              <div className="d-md-none d-flex flex-column gap-3">
+                {calificaciones.map((calif) => {
+                  const viaje = viajesMap[calif.viaje];
+                  const esAutor = user?.id && Number(calif.calificador) === Number(user.id);
+                  const puedeModificar = (esAutor || esAdmin) && !esSoporte;
 
-                    return (
-                      <tr key={calif.id}>
-                        {/* ID */}
-                        <td className="text-secondary fw-medium">
-                          #{calif.id}
-                        </td>
-
-                        {/* VIAJE */}
-                        <td>
-                          <div className="fw-semibold">
-                            {viaje?.nombre || `Viaje #${calif.viaje}`}
+                  return (
+                    <div key={calif.id} className="card border-0 shadow-sm">
+                      <div className="card-body p-3">
+                        <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
+                          <div>
+                            <div className="fw-bold text-dark">
+                              {viaje?.nombre || `Viaje #${calif.viaje}`}
+                            </div>
+                            {viaje && (
+                              <small className="text-secondary">
+                                {nombresSede[viaje.sede_origen] || viaje.sede_origen} →{' '}
+                                {nombresSede[viaje.sede_destino] || viaje.sede_destino}
+                              </small>
+                            )}
                           </div>
-                          {viaje && (
-                            <small className="text-secondary">
-                              {nombresSede[viaje.sede_origen] || viaje.sede_origen} →{' '}
-                              {nombresSede[viaje.sede_destino] || viaje.sede_destino}
-                            </small>
-                          )}
-                        </td>
+                          <span className="badge text-bg-light border">#{calif.id}</span>
+                        </div>
 
-                        {/* CALIFICADOR */}
-                        <td>
-                          <span className={`badge ${esAutor ? 'bg-primary-subtle text-primary' : 'text-bg-light border'}`}>
-                            {esAutor ? 'Tú (Calificador)' : `Usuario #${calif.calificador}`}
-                          </span>
-                        </td>
-
-                        {/* CALIFICADO */}
-                        <td>
-                          <span className="badge text-bg-secondary">
-                            Usuario #{calif.calificado}
-                          </span>
-                        </td>
-
-                        {/* PUNTAJE */}
-                        <td>
+                        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
                           <div className="d-flex align-items-center gap-2">
                             <EstrellasPuntaje valor={calif.puntaje} size="0.95rem" />
-                            <span className="fw-bold small">({calif.puntaje})</span>
+                            <span className="fw-bold small">({calif.puntaje}/5)</span>
                           </div>
-                        </td>
+                          <span className="small text-secondary">{formatFechaCorta(calif.fecha)}</span>
+                        </div>
 
-                        {/* COMENTARIO */}
-                        <td style={{ maxWidth: 260 }}>
-                          <span className="text-truncate d-block small" title={calif.comentario}>
-                            {calif.comentario || <em className="text-secondary">Sin comentario</em>}
+                        <div className="d-flex flex-wrap gap-2 mb-2">
+                          <span className={`badge ${esAutor ? 'bg-primary-subtle text-primary' : 'text-bg-light border'}`}>
+                            {esAutor ? 'Tú (Calificador)' : `Calificador #${calif.calificador}`}
                           </span>
-                        </td>
+                          <span className="badge text-bg-secondary">
+                            Calificado #{calif.calificado}
+                          </span>
+                        </div>
 
-                        {/* FECHA */}
-                        <td className="small text-secondary">
-                          {formatFechaCorta(calif.fecha)}
-                        </td>
+                        <p className="small text-dark mb-3">
+                          {calif.comentario || <em className="text-secondary">Sin comentario</em>}
+                        </p>
 
-                        {/* ACCIONES */}
-                        <td className="text-end text-nowrap">
+                        <div className="d-flex justify-content-end gap-2 pt-2 border-top">
                           {puedeModificar ? (
                             <>
                               <button
                                 type="button"
-                                className="btn btn-outline-primary btn-sm me-2"
+                                className="btn btn-outline-primary btn-sm"
                                 onClick={() => abrirEditar(calif)}
                                 title="Editar calificación"
                               >
@@ -723,13 +695,122 @@ export default function CalificacionesPage() {
                           ) : (
                             <span className="text-secondary small fst-italic">Solo lectura</span>
                           )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Vista escritorio en tabla (>= 768 px) */}
+              <div className="d-none d-md-block table-responsive">
+                <table className="table table-hover align-middle">
+                  <thead className="table-light">
+                    <tr>
+                      <th>ID</th>
+                      <th>Viaje</th>
+                      <th>Calificador</th>
+                      <th>Calificado</th>
+                      <th>Puntaje</th>
+                      <th>Comentario</th>
+                      <th>Fecha</th>
+                      <th className="text-end">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {calificaciones.map((calif) => {
+                      const viaje = viajesMap[calif.viaje];
+                      const esAutor = user?.id && Number(calif.calificador) === Number(user.id);
+                      const puedeModificar = (esAutor || esAdmin) && !esSoporte;
+
+                      return (
+                        <tr key={calif.id}>
+                          {/* ID */}
+                          <td className="text-secondary fw-medium">
+                            #{calif.id}
+                          </td>
+
+                          {/* VIAJE */}
+                          <td>
+                            <div className="fw-semibold">
+                              {viaje?.nombre || `Viaje #${calif.viaje}`}
+                            </div>
+                            {viaje && (
+                              <small className="text-secondary">
+                                {nombresSede[viaje.sede_origen] || viaje.sede_origen} →{' '}
+                                {nombresSede[viaje.sede_destino] || viaje.sede_destino}
+                              </small>
+                            )}
+                          </td>
+
+                          {/* CALIFICADOR */}
+                          <td>
+                            <span className={`badge ${esAutor ? 'bg-primary-subtle text-primary' : 'text-bg-light border'}`}>
+                              {esAutor ? 'Tú (Calificador)' : `Usuario #${calif.calificador}`}
+                            </span>
+                          </td>
+
+                          {/* CALIFICADO */}
+                          <td>
+                            <span className="badge text-bg-secondary">
+                              Usuario #{calif.calificado}
+                            </span>
+                          </td>
+
+                          {/* PUNTAJE */}
+                          <td>
+                            <div className="d-flex align-items-center gap-2">
+                              <EstrellasPuntaje valor={calif.puntaje} size="0.95rem" />
+                              <span className="fw-bold small">({calif.puntaje})</span>
+                            </div>
+                          </td>
+
+                          {/* COMENTARIO */}
+                          <td style={{ maxWidth: 260 }}>
+                            <span className="text-truncate d-block small" title={calif.comentario}>
+                              {calif.comentario || <em className="text-secondary">Sin comentario</em>}
+                            </span>
+                          </td>
+
+                          {/* FECHA */}
+                          <td className="small text-secondary">
+                            {formatFechaCorta(calif.fecha)}
+                          </td>
+
+                          {/* ACCIONES */}
+                          <td className="text-end text-nowrap">
+                            {puedeModificar ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-primary btn-sm me-2"
+                                  onClick={() => abrirEditar(calif)}
+                                  title="Editar calificación"
+                                >
+                                  <i className="bi bi-pencil me-1" />
+                                  Editar
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-danger btn-sm"
+                                  onClick={() => setModalEliminar(calif)}
+                                  title="Eliminar calificación"
+                                >
+                                  <i className="bi bi-trash me-1" />
+                                  Eliminar
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-secondary small fst-italic">Solo lectura</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
           {/* PAGINACIÓN */}

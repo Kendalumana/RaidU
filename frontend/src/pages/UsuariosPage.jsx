@@ -15,7 +15,6 @@ export default function UsuariosPage() {
   const [erroresVehiculosUsuario, setErroresVehiculosUsuario] = useState({});
   const [cargandoVehiculosUsuario, setCargandoVehiculosUsuario] = useState(null);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -32,15 +31,24 @@ export default function UsuariosPage() {
 
   /* ═══ Cargar usuarios y catálogo de vehículos para correlación ═══ */
   const cargar = useCallback(
-    async (p = 1) => {
+    async () => {
       setLoading(true);
       setError('');
       try {
-        const { data } = await api.get(`/usuarios/?page=${p}`);
-        setUsuarios(data.results || []);
-        setPage(data.page || p);
-        setTotalPages(data.total_pages || 1);
-        setTotalCount(data.count || 0);
+        const { data: primeraPagina } = await api.get('/usuarios/?page=1');
+        const cantidadPaginas = Math.max(Number(primeraPagina.total_pages) || 1, 1);
+        const todosLosUsuarios = [...(primeraPagina.results || [])];
+
+        if (cantidadPaginas > 1) {
+          const solicitudes = Array.from({ length: cantidadPaginas - 1 }, (_, indice) =>
+            api.get(`/usuarios/?page=${indice + 2}`)
+          );
+          const respuestas = await Promise.all(solicitudes);
+          respuestas.forEach(({ data }) => todosLosUsuarios.push(...(data.results || [])));
+        }
+
+        setUsuarios(todosLosUsuarios);
+        setTotalCount(Number(primeraPagina.count) || todosLosUsuarios.length);
       } catch (err) {
         setError(getError(err));
       } finally {
@@ -51,8 +59,8 @@ export default function UsuariosPage() {
   );
 
   useEffect(() => {
-    if (puedeListar) cargar(page);
-  }, [cargar, page, puedeListar]);
+    if (puedeListar) cargar();
+  }, [cargar, puedeListar]);
 
   /* ═══ Mapa de vehículos agrupados por ID de propietario ═══ */
   const cargarVehiculosUsuario = async (userId) => {
@@ -148,7 +156,7 @@ export default function UsuariosPage() {
     try {
       await api.delete(`/usuarios/${u.id}/`);
       setMsg(`La cuenta de "${u.email}" ha sido desactivada exitosamente.`);
-      await cargar(page);
+      await cargar();
     } catch (err) {
       setError(getError(err));
     }
@@ -190,6 +198,16 @@ export default function UsuariosPage() {
     });
   }, [usuarios, search, filtroEstado, filtroRol, filtroCorreo]);
 
+  const totalPages = Math.max(1, Math.ceil(usuariosFiltrados.length / 10));
+  const usuariosDePagina = useMemo(
+    () => usuariosFiltrados.slice((page - 1) * 10, page * 10),
+    [usuariosFiltrados, page]
+  );
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
   /* Defensa adicional: Django permite lectura a Admin y Soporte. */
   if (!puedeListar) {
     return (
@@ -228,7 +246,7 @@ export default function UsuariosPage() {
           </p>
         </div>
 
-        <button className="btn btn-outline-primary btn-sm" onClick={() => cargar(page)}>
+        <button className="btn btn-outline-primary btn-sm" onClick={cargar} disabled={loading}>
           <i className="bi bi-arrow-clockwise me-1" />Actualizar listado
         </button>
       </div>
@@ -242,9 +260,12 @@ export default function UsuariosPage() {
         </div>
       )}
       {error && (
-        <div className="alert alert-danger alert-dismissible fade show py-2 d-flex align-items-center" role="alert">
+        <div className="alert alert-danger alert-dismissible fade show py-2 d-flex flex-wrap align-items-center gap-2" role="alert">
           <i className="bi bi-exclamation-triangle-fill me-2 fs-5" />
           <div className="flex-grow-1">{error}</div>
+          <button type="button" className="btn btn-outline-danger btn-sm" onClick={cargar} disabled={loading}>
+            Reintentar
+          </button>
           <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Cerrar" />
         </div>
       )}
@@ -264,10 +285,13 @@ export default function UsuariosPage() {
                   className="form-control"
                   placeholder="Buscar por nombre, apellidos o correo institucional…"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
                 />
                 {search && (
-                  <button className="btn btn-outline-secondary" type="button" onClick={() => setSearch('')}>
+                  <button className="btn btn-outline-secondary" type="button" onClick={() => { setSearch(''); setPage(1); }}>
                     <i className="bi bi-x-lg" />
                   </button>
                 )}
@@ -279,7 +303,10 @@ export default function UsuariosPage() {
               <select
                 className="form-select form-select-sm"
                 value={filtroEstado}
-                onChange={(e) => setFiltroEstado(e.target.value)}
+                onChange={(e) => {
+                  setFiltroEstado(e.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="todos">Todos los estados</option>
                 <option value="activo">Solo Activos</option>
@@ -292,7 +319,10 @@ export default function UsuariosPage() {
               <select
                 className="form-select form-select-sm"
                 value={filtroRol}
-                onChange={(e) => setFiltroRol(e.target.value)}
+                onChange={(e) => {
+                  setFiltroRol(e.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="todos">Todos los roles</option>
                 <option value="estudiante">Estudiantes</option>
@@ -306,7 +336,10 @@ export default function UsuariosPage() {
               <select
                 className="form-select form-select-sm"
                 value={filtroCorreo}
-                onChange={(e) => setFiltroCorreo(e.target.value)}
+                onChange={(e) => {
+                  setFiltroCorreo(e.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="todos">Cualquier dominio de correo</option>
                 <option value="institucional">Institucional (@ucr.ac.cr)</option>
@@ -329,7 +362,7 @@ export default function UsuariosPage() {
             <i className="bi bi-people text-secondary fs-1 mb-2 d-block" />
             <h5 className="fw-semibold text-secondary">No se encontraron usuarios</h5>
             <p className="text-muted small mb-0">
-              No hay registros que coincidan con los filtros aplicados en esta página.
+              No hay usuarios que coincidan con la búsqueda y los filtros aplicados.
             </p>
           </div>
         </div>
@@ -337,14 +370,14 @@ export default function UsuariosPage() {
         <>
           <div className="d-flex justify-content-between align-items-center mb-2 px-1">
             <span className="text-secondary small">
-              Mostrando <strong>{usuariosFiltrados.length}</strong> de <strong>{totalCount}</strong> usuarios
+              Mostrando <strong>{usuariosDePagina.length}</strong> de <strong>{usuariosFiltrados.length}</strong> usuarios coincidentes (total del directorio: {totalCount})
             </span>
             <span className="badge bg-light text-secondary border">Página {page} de {totalPages}</span>
           </div>
 
           {/* Cards responsivas para móvil */}
           <div className="d-md-none">
-            {usuariosFiltrados.map((u) => {
+            {usuariosDePagina.map((u) => {
               const totalVehiculos = u.cantidad_vehiculos;
               const esInstitucional = u.email && u.email.toLowerCase().endsWith('@ucr.ac.cr');
               const isExpanded = expandedUserId === u.id;
@@ -431,7 +464,7 @@ export default function UsuariosPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {usuariosFiltrados.map((u) => {
+                    {usuariosDePagina.map((u) => {
                       const totalVehiculos = u.cantidad_vehiculos;
                       const esInstitucional = u.email && u.email.toLowerCase().endsWith('@ucr.ac.cr');
                       const isExpanded = expandedUserId === u.id;

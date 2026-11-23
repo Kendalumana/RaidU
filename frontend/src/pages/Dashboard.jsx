@@ -6,11 +6,12 @@ import { api } from '../api/client.js';
 export default function Dashboard() {
   const { user, rol, esAdmin } = useAuth();
   const [stats, setStats] = useState({
-    vehiculos: 0,
-    viajes: 0,
-    reservas: 0,
+    vehiculos: null,
+    viajes: null,
+    reservas: null,
     promedio: null,
-    totalUsuarios: 0,
+    promedioError: false,
+    totalUsuarios: null,
   });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Todas');
@@ -21,7 +22,7 @@ export default function Dashboard() {
     const cargarDatos = async () => {
       try {
         const contarResultados = (r) => {
-          if (r.status !== 'fulfilled') return 0;
+          if (r.status !== 'fulfilled') return null;
           const d = r.value.data;
           if (typeof d.total_registros === 'number') return d.total_registros;
           if (typeof d.count === 'number') return d.count;
@@ -45,12 +46,13 @@ export default function Dashboard() {
         const [veh, via, res, usr] = respuestas;
 
         let prom = null;
+        let promedioError = false;
         if (user?.id) {
           try {
             const { data } = await api.get(`/calificaciones/promedio/${user.id}/`);
-            prom = data.promedio;
+            prom = data.promedio ?? null;
           } catch {
-            prom = null;
+            promedioError = true;
           }
         }
 
@@ -59,6 +61,7 @@ export default function Dashboard() {
           viajes: contarResultados(via),
           reservas: contarResultados(res),
           promedio: prom,
+          promedioError,
           totalUsuarios: esStaff && usr ? contarResultados(usr) : 0,
         });
       } catch {
@@ -76,8 +79,11 @@ export default function Dashboard() {
     {
       id: 'vehiculos',
       label: 'Mis Vehículos',
-      value: stats.vehiculos,
-      unit: stats.vehiculos === 1 ? 'Vehículo registrado' : 'Vehículos registrados',
+      value: stats.vehiculos ?? 'No disponible',
+      unit: stats.vehiculos === null
+        ? 'No se pudieron cargar los vehículos'
+        : stats.vehiculos === 1 ? 'Vehículo registrado' : 'Vehículos registrados',
+      unavailable: stats.vehiculos === null,
       icon: 'bi-truck',
       iconColor: '#0284c7',
       iconBg: '#e0f2fe',
@@ -88,8 +94,11 @@ export default function Dashboard() {
     {
       id: 'viajes',
       label: 'Viajes Disponibles',
-      value: stats.viajes,
-      unit: stats.viajes === 1 ? 'Ruta activa' : 'Rutas activas',
+      value: stats.viajes ?? 'No disponible',
+      unit: stats.viajes === null
+        ? 'No se pudieron cargar los viajes'
+        : stats.viajes === 1 ? 'Ruta activa' : 'Rutas activas',
+      unavailable: stats.viajes === null,
       icon: 'bi-compass',
       iconColor: '#8b5cf6',
       iconBg: '#f3e8ff',
@@ -100,8 +109,11 @@ export default function Dashboard() {
     {
       id: 'reservas',
       label: 'Mis Reservas',
-      value: stats.reservas,
-      unit: stats.reservas === 1 ? 'Cupo reservado' : 'Cupos reservados',
+      value: stats.reservas ?? 'No disponible',
+      unit: stats.reservas === null
+        ? 'No se pudieron cargar las reservas'
+        : stats.reservas === 1 ? 'Cupo reservado' : 'Cupos reservados',
+      unavailable: stats.reservas === null,
       icon: 'bi-ticket-perforated',
       iconColor: '#f59e0b',
       iconBg: '#fef3c7',
@@ -112,8 +124,13 @@ export default function Dashboard() {
     {
       id: 'calificaciones',
       label: 'Mi Calificación',
-      value: stats.promedio !== null ? Number(stats.promedio).toFixed(1) : '—',
-      unit: stats.promedio !== null ? 'Puntaje de 5.0' : 'Sin calificaciones aún',
+      value: stats.promedioError
+        ? 'No disponible'
+        : stats.promedio !== null ? Number(stats.promedio).toFixed(1) : '-',
+      unit: stats.promedioError
+        ? 'No se pudo consultar el promedio'
+        : stats.promedio !== null ? 'Puntaje de 5.0' : 'Sin calificaciones',
+      unavailable: stats.promedioError,
       icon: 'bi-star',
       iconColor: '#10b981',
       iconBg: '#d1fae5',
@@ -159,7 +176,9 @@ export default function Dashboard() {
             <div>
               <div className="fw-bold text-dark">Acceso de Personal ({rol?.toUpperCase()})</div>
               <div className="text-secondary small">
-                {stats.totalUsuarios > 0
+                {stats.totalUsuarios === null
+                  ? 'No disponible: no se pudo consultar el total de cuentas.'
+                  : stats.totalUsuarios > 0
                   ? `Se registran ${stats.totalUsuarios} cuentas en el sistema.`
                   : 'Gestión y auditoría de la plataforma RaidU.'}
               </div>
@@ -196,8 +215,8 @@ export default function Dashboard() {
                     >
                       <i className={`bi ${card.icon} fs-5`} />
                     </div>
-                    <span className={`badge rounded-pill px-2 py-1 small fw-medium ${card.pillColor}`}>
-                      {card.pill}
+                    <span className={`badge rounded-pill px-2 py-1 small fw-medium ${card.unavailable ? 'text-danger bg-danger-subtle' : card.pillColor}`}>
+                      {card.unavailable ? 'Error de consulta' : card.pill}
                     </span>
                   </div>
 

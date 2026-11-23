@@ -5,19 +5,67 @@ import {
   useState,
 } from 'react';
 
-import { getError } from '../api/client.js';
+import { api, getError } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 
 import FormReserva from '../components/FormReserva.jsx';
 
-import {
-  addReserva,
-  cancelReserva,
-  deleteReserva,
-  listAllViajes,
-  listReservas,
-  updateReserva,
-} from '../services/reservaService.js';
+async function listReservas({ page = 1, estado = '', viaje = '' } = {}) {
+  const params = { page };
+  if (estado) params.estado = estado;
+  if (viaje) params.viaje = viaje;
+
+  const { data } = await api.get('/reservas/', { params });
+  return {
+    items: data.resultados ?? [],
+    page: data.pagina_actual ?? page,
+    totalPages: data.total_paginas ?? 1,
+    total: data.total_registros ?? 0,
+  };
+}
+
+async function listAllViajes() {
+  const { data: firstPage } = await api.get('/viajes/', {
+    params: { page: 1 },
+  });
+
+  const viajes = firstPage.resultados ?? [];
+  const totalPages = firstPage.total_paginas ?? 1;
+
+  if (totalPages <= 1) return viajes;
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) =>
+      api.get('/viajes/', { params: { page: index + 2 } })
+    )
+  );
+
+  return [
+    ...viajes,
+    ...remainingPages.flatMap(({ data }) => data.resultados ?? []),
+  ];
+}
+
+async function addReserva(reserva) {
+  const { data } = await api.post('/reservas/', reserva);
+  return data;
+}
+
+async function updateReserva(id, datos) {
+  const { data } = await api.patch(`/reservas/${id}/`, datos);
+  return data;
+}
+
+async function cancelReserva(id) {
+  const { data } = await api.patch(`/reservas/${id}/`, {
+    estado: 'cancelada',
+  });
+  return data;
+}
+
+async function deleteReserva(id) {
+  await api.delete(`/reservas/${id}/`);
+}
 
 const nombresSede = {
   rodrigo_facio: 'Rodrigo Facio',

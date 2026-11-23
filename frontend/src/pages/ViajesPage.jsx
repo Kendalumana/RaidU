@@ -44,6 +44,7 @@ export default function ViajesPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [listError, setListError] = useState('');
   const [msg, setMsg] = useState('');
 
   /* ── filtros combinables ── */
@@ -96,7 +97,7 @@ export default function ViajesPage() {
   const cargarViajes = useCallback(
     async (p = 1) => {
       setLoading(true);
-      setError('');
+      setListError('');
       try {
         const params = new URLSearchParams({ page: p });
         Object.entries(filtros).forEach(([k, v]) => {
@@ -108,7 +109,7 @@ export default function ViajesPage() {
         setTotalPages(data.total_paginas || 1);
         setTotalCount(data.total_registros || 0);
       } catch (err) {
-        setError(getError(err));
+        setListError(getError(err));
       } finally {
         setLoading(false);
       }
@@ -729,11 +730,29 @@ export default function ViajesPage() {
         </div>
       )}
 
-      {/* ── Listado de viajes disponibles ── */}
+      {/* ── Listado de viajes: separación explícita de carga, fallo, vacío y datos ── */}
       {loading ? (
         <div className="text-center py-5">
           <div className="spinner-border text-success" role="status" />
           <p className="mt-2 text-secondary">Cargando viajes disponibles…</p>
+        </div>
+      ) : listError ? (
+        <div className="card border-0 shadow-sm border-start border-4 border-danger mb-4">
+          <div className="card-body text-center py-5">
+            <div className="bg-danger bg-opacity-10 text-danger rounded-circle d-inline-flex p-3 mb-3">
+              <i className="bi bi-exclamation-triangle-fill fs-2" />
+            </div>
+            <h5 className="fw-semibold text-danger">Error al consultar los viajes</h5>
+            <p className="text-muted small mb-3">{listError}</p>
+            <button
+              type="button"
+              className="btn btn-outline-danger btn-sm px-3"
+              onClick={() => cargarViajes(page)}
+            >
+              <i className="bi bi-arrow-clockwise me-1" />
+              Reintentar consulta
+            </button>
+          </div>
         </div>
       ) : viajes.length === 0 ? (
         <div className="card border-0 shadow-sm">

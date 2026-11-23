@@ -88,6 +88,45 @@ class ViajesAPITests(APITestCase):
     def crear(self, **cambios):
         return self.client.post('/api/viajes/', self.datos | cambios, format='json')
 
+    def test_participantes_solo_para_integrantes_de_viaje_finalizado(self):
+        from reservas.models import Reserva
+
+        self.usuario.first_name = 'Ana'
+        self.usuario.email = 'ana@ucr.ac.cr'
+        self.usuario.save()
+        self.otro.first_name = 'Luis'
+        self.otro.email = 'luis@ucr.ac.cr'
+        self.otro.save()
+        creado = self.crear()
+        viaje = Viaje.objects.get(pk=creado.data['id'])
+        reserva = Reserva.objects.create(viaje=viaje, pasajero=self.otro, cupos=1)
+        url = f'/api/viajes/{viaje.pk}/participantes/'
+        self.assertEqual(self.client.get(url).status_code, 400)
+        viaje.estado = Viaje.Estado.FINALIZADO
+        viaje.save(update_fields=['estado'])
+        self.assertEqual(self.client.get(url).data['participantes'], [
+            {'id': self.otro.pk, 'nombre': 'Luis', 'correo': 'luis@ucr.ac.cr', 'rol': 'pasajero'},
+        ])
+        self.client.force_authenticate(self.otro)
+        self.assertEqual(self.client.get(url).data['participantes'], [
+            {'id': self.usuario.pk, 'nombre': 'Ana', 'correo': 'ana@ucr.ac.cr', 'rol': 'conductor'},
+        ])
+        reserva.estado = Reserva.Estado.CANCELADA
+        reserva.save(update_fields=['estado'])
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get(url).status_code, 401)
+
+    def test_catalogo_disponible_y_mis_viajes(self):
+        disponible = self.crear().data['id']
+        for cambios in [{'estado': 'finalizado'}, {'estado': 'cancelado'}, {'estado': 'en_curso'},
+                        {'cupos_disponibles': 0}, {'fecha_hora': timezone.now() - timedelta(minutes=1)}]:
+            viaje = self.crear().data['id']
+            Viaje.objects.filter(pk=viaje).update(**cambios)
+        catalogo = self.client.get('/api/viajes/', {'disponibles': 'true'}).data
+        self.assertEqual([v['id'] for v in catalogo['resultados']], [disponible])
+        self.assertEqual(self.client.get('/api/viajes/mis-viajes/').data['total_registros'], 6)
+
     def test_solo_publicado_al_crear(self):
         for estado in ['lleno', 'en_curso', 'finalizado', 'cancelado']:
             with self.subTest(estado=estado):
@@ -96,6 +135,14 @@ class ViajesAPITests(APITestCase):
         self.assertEqual(respuesta.status_code, 201)
         self.assertEqual(respuesta.data['estado'], 'publicado')
         self.assertEqual(respuesta.data['cupos_disponibles'], 4)
+
+    def test_nombre_opcional_se_guarda_y_actualiza(self):
+        respuesta = self.crear(nombre='Viaje a la U')
+        self.assertEqual(respuesta.status_code, 201)
+        url = f"/api/viajes/{respuesta.data['id']}/"
+        self.assertEqual(self.client.get(url).data['nombre'], 'Viaje a la U')
+        self.assertEqual(self.client.patch(url, {'nombre': 'Regreso'}, format='json').data['nombre'], 'Regreso')
+        self.assertEqual(self.crear().data['nombre'], '')
 
     def test_filtros_invalidos_responden_400(self):
         self.client.raise_request_exception = False
@@ -180,6 +227,8 @@ class ViajesAPITests(APITestCase):
                 self.assertEqual(viaje.cupos_disponibles, disponibles)
 
     def test_mis_viajes_participante(self):
+        self.otro.email = 'conductor@ucr.ac.cr'
+        self.otro.save(update_fields=['email'])
         resp1 = self.crear(costo_total='1500.00')
         viaje1_id = resp1.data['id']
 
@@ -219,6 +268,12 @@ class ViajesAPITests(APITestCase):
         self.assertIn(viaje1_id, ids_mis)
         self.assertIn(viaje2_id, ids_mis)
         self.assertNotIn(viaje3_id, ids_mis)
+        reservables = self.client.get('/api/viajes/', {'reservables': 'true'})
+        self.assertEqual([v['id'] for v in reservables.data['resultados']], [viaje3_id])
+
+        reservado = next(v for v in res_mis.data['resultados'] if v['id'] == viaje2_id)
+        self.assertEqual(reservado['conductor_correo'], self.otro.email)
+        self.assertEqual(reservado['vehiculo_placa'], vehiculo_otro.placa)
         self.assertEqual(len(ids_mis), len(set(ids_mis)))
 
         res_param = self.client.get('/api/viajes/?mis_viajes=true')

@@ -38,21 +38,34 @@ class VehiculoTests(APITestCase):
         respuesta = self.client.get('/api/vehiculos/999999/')
         self.assertEqual(respuesta.status_code, 404)
 
-        self.datos['placa'] = 'DEF456'
+        self.datos['placa'] = 'ABC123'
         respuesta = self.client.put(self.url, self.datos, format='json')
         self.assertEqual(respuesta.status_code, 200)
         self.vehiculo.refresh_from_db()
-        self.assertEqual(self.vehiculo.placa, 'DEF456')
+        self.assertEqual(self.vehiculo.placa, 'ABC123')
         datos = {'marca': 'Mazda', 'propietario': self.otro.id}
         respuesta = self.client.patch(self.url, datos, format='json')
         self.assertEqual(respuesta.status_code, 200)
         self.vehiculo.refresh_from_db()
         self.assertEqual(self.vehiculo.marca, 'Mazda')
-        self.assertEqual(self.vehiculo.placa, 'DEF456')
+        self.assertEqual(self.vehiculo.placa, 'ABC123')
         self.assertEqual(self.vehiculo.propietario, self.usuario)
         respuesta = self.client.delete(self.url)
         self.assertEqual(respuesta.status_code, 204)
         self.assertFalse(Vehiculo.objects.filter(id=self.vehiculo.id).exists())
+
+    def test_no_permite_cambiar_placa_por_put_o_patch(self):
+        for actor in [self.usuario, self.admin]:
+            self.client.force_authenticate(user=actor)
+            for metodo in ['put', 'patch']:
+                with self.subTest(actor=actor.username, metodo=metodo):
+                    datos = {'placa': 'NUE123', 'marca': 'Mazda', 'modelo': '3', 'capacidad': 4}
+                    respuesta = getattr(self.client, metodo)(self.url, datos, format='json')
+                    self.assertEqual(respuesta.status_code, 400)
+                    self.assertIn('placa', respuesta.data)
+                    self.vehiculo.refresh_from_db()
+                    self.assertEqual(self.vehiculo.placa, 'ABC123')
+                    self.assertEqual(self.vehiculo.marca, 'Toyota')
 
     def test_validaciones(self):
         respuesta = self.client.post('/api/vehiculos/', {}, format='json')

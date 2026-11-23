@@ -93,5 +93,7 @@ class FiltrosViajeSerializer(serializers.Serializer):
     fecha = serializers.DateField(required=False)
     estado = serializers.ChoiceField(choices=Viaje.Estado.choices, required=False)
     cupos_minimos = serializers.IntegerField(min_value=0, max_value=32767, required=False)
+    reservables = serializers.BooleanField(required=False)
+    disponibles = serializers.BooleanField(required=False)
     mis_viajes = serializers.BooleanField(required=False)
     ordering = serializers.ChoiceField(choices=['fecha_hora', '-fecha_hora', 'costo_total', '-costo_total'], required=False)

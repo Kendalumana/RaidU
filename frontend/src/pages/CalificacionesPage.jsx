@@ -1,752 +1,970 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { api, getError } from '../api/client.js';
-import { Link } from 'react-router-dom';
+import {
+  listCalificaciones,
+  addCalificacion,
+  updateCalificacion,
+  deleteCalificacion,
+  getPromedioUsuario,
+  listViajesFinalizados,
+} from '../services/calificacionService.js';
+import { listAllViajes, listAllMisReservas } from '../services/reservaService.js';
+
+const nombresSede = {
+  rodrigo_facio: 'Rodrigo Facio',
+  san_ramon: 'San Ramón',
+  esparza: 'Esparza',
+  puntarenas: 'Puntarenas',
+};
+
+function formatFechaCorta(fechaIso) {
+  if (!fechaIso) return '';
+  const d = new Date(fechaIso);
+  return d.toLocaleDateString('es-CR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function EstrellasPuntaje({ valor, size = '1.1rem', interactive = false, onChange = () => {} }) {
+  const [hover, setHover] = useState(0);
+
+  return (
+    <div className="d-inline-flex align-items-center gap-1">
+      {[1, 2, 3, 4, 5].map((estrella) => {
+        const activa = (hover || valor) >= estrella;
+        return (
+          interactive ? (
+            <button key={estrella} type="button" className="btn p-0 border-0" aria-label={`${estrella} de 5 estrellas`} aria-pressed={valor === estrella}
+              onClick={() => onChange(estrella)} onMouseEnter={() => setHover(estrella)} onMouseLeave={() => setHover(0)}>
+              <i aria-hidden="true" className={`bi ${activa ? 'bi-star-fill text-warning' : 'bi-star text-secondary'}`} style={{ fontSize: size }} />
+            </button>
+          ) : (
+            <i key={estrella} className={`bi ${activa ? 'bi-star-fill text-warning' : 'bi-star text-secondary'}`} style={{ fontSize: size }} />
+          )
+        );
+      })}
+    </div>
+  );
+}
 
 export default function CalificacionesPage() {
   const { user, esAdmin, esSoporte } = useAuth();
+  const [searchParams] = useSearchParams();
 
-  /* ── Estados principales ── */
-  const [tab, setTab] = useState('recibidas'); // 'recibidas' | 'realizadas' | 'nueva'
+  // Estados de listado
   const [calificaciones, setCalificaciones] = useState([]);
-  const [promedioInfo, setPromedioInfo] = useState({ promedio: null, total: 0 });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [msg, setMsg] = useState('');
-
-  /* ── Paginación ── */
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [pagina, setPagina] = useState(1);
+  const [totalPaginas, setTotalPaginas] = useState(1);
   const [totalRegistros, setTotalRegistros] = useState(0);
+  const [cargando, setCargando] = useState(true);
 
-  /* ── Filtro de estrellas ── */
+  // Filtros
   const [filtroPuntaje, setFiltroPuntaje] = useState('');
+  const [filtroModo, setFiltroModo] = useState('todas'); // 'todas', 'recibidas', 'emitidas'
+  const [orden, setOrden] = useState('-fecha');
 
-  /* ── Formulario de Calificación (Crear / Editar) ── */
+  // Promedio y métricas del usuario actual
+  const [promedioInfo, setPromedioInfo] = useState({ promedio: null, total: 0 });
+
+  // Viajes para correlación y formulario
+  const [viajesFinalizados, setViajesFinalizados] = useState([]);
+  const [viajesMap, setViajesMap] = useState({});
+  const [participantes, setParticipantes] = useState([]);
+  const [participantesError, setParticipantesError] = useState('');
+  const [cargandoParticipantes, setCargandoParticipantes] = useState(false);
+
+  // Modal de emisión / edición (modal responsive garantizado en móvil y desktop)
+  const [modalFormVisible, setModalFormVisible] = useState(false);
+  const [editando, setEditando] = useState(null);
+  const [guardando, setGuardando] = useState(false);
   const [form, setForm] = useState({
     viaje: '',
     calificado: '',
     puntaje: 5,
     comentario: '',
   });
-  const [editId, setEditId] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [eliminandoId, setEliminandoId] = useState(null);
-  const [formErrors, setFormErrors] = useState({});
 
-  /* ── Datos de apoyo para el formulario ── */
-  const [viajesFinalizados, setViajesFinalizados] = useState([]);
-  const [usuariosCandidatos, setUsuariosCandidatos] = useState([]);
-  const [loadingFormSupport, setLoadingFormSupport] = useState(false);
+  // Notificaciones
+  const [error, setError] = useState('');
+  const [exito, setExito] = useState('');
 
-  /* ═══ 1. Cargar promedio y reputación del usuario ═══ */
+  // Modal de confirmación para eliminar
+  const [modalEliminar, setModalEliminar] = useState(null);
+
+  // ───────────────────────────────────────────
+  // CARGAR PROMEDIO DEL USUARIO
+  // ───────────────────────────────────────────
   const cargarPromedio = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const { data } = await api.get(`/calificaciones/promedio/${user.id}/`);
-      setPromedioInfo({
-        promedio: data.promedio,
-        total: data.total_calificaciones ?? 0,
-      });
+      const stats = await getPromedioUsuario(user.id);
+      setPromedioInfo(stats);
     } catch {
-      setPromedioInfo({ promedio: null, total: 0 });
+      // Si aún no tiene calificaciones registradas, se mantiene en null
     }
-  }, [user?.id]);
+  }, [user]);
 
-  /* ═══ 2. Cargar calificaciones según pestaña activa ═══ */
-  const cargarCalificaciones = useCallback(
-    async (p = 1) => {
-      if (!user?.id) return;
-      setLoading(true);
-      setError('');
+  // ───────────────────────────────────────────
+  // CARGAR VIAJES (Para nombres y selectores)
+  // REGLA: Solo se pueden calificar viajes donde el usuario haya participado
+  // ───────────────────────────────────────────
+  useEffect(() => {
+    async function initViajes() {
       try {
-        const params = new URLSearchParams({ page: p });
-        if (tab === 'recibidas') {
-          params.set('calificado', user.id);
-        } else if (tab === 'realizadas') {
-          params.set('calificador', user.id);
-        }
+        const [finalizados, todos, misReservas] = await Promise.all([
+          listViajesFinalizados(),
+          listAllViajes(),
+          listAllMisReservas(user?.id),
+        ]);
 
-        if (filtroPuntaje) {
-          params.set('puntaje', filtroPuntaje);
-        }
+        const map = {};
+        todos.forEach((v) => {
+          map[v.id] = v;
+        });
+        finalizados.forEach((v) => {
+          map[v.id] = v;
+        });
+        setViajesMap(map);
 
-        const { data } = await api.get(`/calificaciones/?${params}`);
-        setCalificaciones(data.resultados || []);
-        setPage(data.pagina_actual || p);
-        setTotalPages(data.total_paginas || 1);
-        setTotalRegistros(data.total_registros || 0);
+        // REGLA ESTRICTA: El usuario SOLO puede calificar viajes donde FUE PARTE:
+        // 1) Es el conductor del viaje
+        // 2) O tiene reserva confirmada en ese viaje
+        const misReservasConfirmadasViajesIds = new Set(
+          misReservas
+            .filter((r) => r.estado === 'confirmada')
+            .map((r) => Number(r.viaje))
+        );
+
+        const misViajesParticipados = finalizados.filter((v) => {
+          const esConductor = user?.id && Number(v.conductor) === Number(user.id);
+          const esPasajero = misReservasConfirmadasViajesIds.has(Number(v.id));
+          return esConductor || esPasajero;
+        });
+
+        setViajesFinalizados(misViajesParticipados);
       } catch (err) {
-        setError(getError(err));
-      } finally {
-        setLoading(false);
+        setError('No se pudieron cargar los viajes para calificar. Inténtalo de nuevo.');
       }
-    },
-    [user?.id, tab, filtroPuntaje]
-  );
-
-  /* ═══ 3. Cargar viajes finalizados para el formulario ═══ */
-  const cargarViajesFinalizados = useCallback(async () => {
-    setLoadingFormSupport(true);
-    try {
-      // Consultar viajes finalizados
-      const { data } = await api.get('/viajes/?estado=finalizado&page=1');
-      const viajes = data.resultados || [];
-      setViajesFinalizados(viajes);
-    } catch {
-      setViajesFinalizados([]);
-    } finally {
-      setLoadingFormSupport(false);
     }
-  }, []);
-
-  useEffect(() => {
+    initViajes();
     cargarPromedio();
-  }, [cargarPromedio]);
+  }, [cargarPromedio, user?.id]);
 
+  // Si llega con query param ?viaje=ID, abrir modal directamente
   useEffect(() => {
-    if (tab !== 'nueva') {
-      cargarCalificaciones(1);
-    } else {
-      cargarViajesFinalizados();
+    const viajeParam = searchParams.get('viaje');
+    if (viajeParam) {
+      setEditando(null);
+      setForm((prev) => ({
+        ...prev,
+        viaje: String(viajeParam),
+        calificado: '',
+        puntaje: 5,
+        comentario: '',
+      }));
+      setModalFormVisible(true);
     }
-  }, [tab, cargarCalificaciones, cargarViajesFinalizados]);
+  }, [searchParams]);
 
-  /* ═══ 4. Detectar participantes cuando se selecciona un viaje ═══ */
-  const handleViajeChange = async (viajeId) => {
-    setForm((prev) => ({ ...prev, viaje: viajeId, calificado: '' }));
-    setFormErrors((prev) => ({ ...prev, viaje: '', calificado: '' }));
-
-    if (!viajeId) {
-      setUsuariosCandidatos([]);
-      return;
-    }
-
-    try {
-      // Obtener reservas de ese viaje para encontrar a los pasajeros
-      const { data } = await api.get(`/reservas/?viaje=${viajeId}`);
-      const reservas = data.resultados || [];
-      const viajeSeleccionado = viajesFinalizados.find((v) => v.id === Number(viajeId));
-
-      const candidatos = [];
-
-      // Si yo no soy el conductor, el conductor es un candidato para calificar
-      if (viajeSeleccionado && Number(viajeSeleccionado.conductor) !== Number(user?.id)) {
-        candidatos.push({
-          id: viajeSeleccionado.conductor,
-          label: `Conductor del viaje (Usuario #${viajeSeleccionado.conductor})`,
-        });
-      }
-
-      // Si yo soy el conductor u otro pasajero, los pasajeros confirmados son candidatos
-      reservas.forEach((r) => {
-        if (Number(r.pasajero) !== Number(user?.id) && r.estado === 'confirmada') {
-          candidatos.push({
-            id: r.pasajero,
-            label: `Pasajero (Usuario #${r.pasajero})`,
-          });
-        }
-      });
-
-      setUsuariosCandidatos(candidatos);
-    } catch {
-      setUsuariosCandidatos([]);
-    }
-  };
-
-  /* ═══ 5. Guardar Calificación (POST o PATCH) ═══ */
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const errs = {};
-    if (!form.viaje && !editId) errs.viaje = 'Debe seleccionar un viaje finalizado.';
-    if (!form.calificado && !editId) errs.calificado = 'Debe indicar al usuario a calificar.';
-    if (!form.puntaje || form.puntaje < 1 || form.puntaje > 5) {
-      errs.puntaje = 'El puntaje debe ser entre 1 y 5 estrellas.';
-    }
-
-    if (Object.keys(errs).length > 0) {
-      setFormErrors(errs);
-      return;
-    }
-
-    setSaving(true);
+  // ───────────────────────────────────────────
+  // CARGAR CALIFICACIONES
+  // ───────────────────────────────────────────
+  const recargar = useCallback(async () => {
+    setCargando(true);
     setError('');
-    setMsg('');
-
     try {
-      if (editId) {
-        await api.patch(`/calificaciones/${editId}/`, {
-          puntaje: Number(form.puntaje),
-          comentario: (form.comentario || '').trim(),
-        });
-        setMsg('Calificación actualizada correctamente.');
-      } else {
-        await api.post('/calificaciones/', {
-          viaje: Number(form.viaje),
-          calificado: Number(form.calificado),
-          puntaje: Number(form.puntaje),
-          comentario: (form.comentario || '').trim(),
-        });
-        setMsg('¡Calificación enviada exitosamente! Gracias por fomentar la confianza en RaidU.');
+      const params = {
+        page: pagina,
+        ordering: orden,
+      };
+
+      if (filtroPuntaje) params.puntaje = filtroPuntaje;
+
+      if (filtroModo === 'recibidas' && user?.id) {
+        params.calificado = user.id;
+      } else if (filtroModo === 'emitidas' && user?.id) {
+        params.calificador = user.id;
       }
 
-      setForm({ viaje: '', calificado: '', puntaje: 5, comentario: '' });
-      setEditId(null);
-      setTab('realizadas');
-      cargarPromedio();
-    } catch (err) {
-      if (err.response?.status === 400 && typeof err.response.data === 'object') {
-        const fieldErrs = {};
-        Object.entries(err.response.data).forEach(([k, v]) => {
-          fieldErrs[k] = Array.isArray(v) ? v.join(' ') : v;
-        });
-        setFormErrors(fieldErrs);
-        if (fieldErrs.detail) setError(fieldErrs.detail);
-      } else {
-        setError(getError(err));
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  /* ═══ 6. Abrir formulario de edición ═══ */
-  const abrirEditar = (cal) => {
-    setEditId(cal.id);
-    setForm({
-      viaje: cal.viaje,
-      calificado: cal.calificado,
-      puntaje: cal.puntaje,
-      comentario: cal.comentario || '',
-    });
-    setTab('nueva');
-  };
-
-  /* ═══ 7. Eliminar calificación ═══ */
-  const eliminarCalificacion = async (id) => {
-    if (eliminandoId) return;
-    if (!window.confirm('¿Está seguro de eliminar esta calificación? Esta acción no se puede deshacer.')) {
-      return;
-    }
-    setMsg('');
-    setError('');
-    setEliminandoId(id);
-    try {
-      await api.delete(`/calificaciones/${id}/`);
-      setMsg('Calificación eliminada correctamente.');
-      await Promise.all([cargarCalificaciones(page), cargarPromedio()]);
+      const res = await listCalificaciones(params);
+      setCalificaciones(res.items);
+      setPagina(res.page);
+      setTotalPaginas(res.totalPages);
+      setTotalRegistros(res.total);
     } catch (err) {
       setError(getError(err));
     } finally {
-      setEliminandoId(null);
+      setCargando(false);
+    }
+  }, [pagina, filtroPuntaje, filtroModo, orden, user]);
+
+  useEffect(() => {
+    recargar();
+  }, [recargar]);
+
+  // ───────────────────────────────────────────
+  // FORMULARIO: VIAJE Y DESTINATARIOS
+  // ───────────────────────────────────────────
+  const viajeSeleccionadoObj = useMemo(() => {
+    if (!form.viaje) return null;
+    return viajesFinalizados.find((viaje) => Number(viaje.id) === Number(form.viaje)) || null;
+  }, [form.viaje, viajesFinalizados]);
+
+  useEffect(() => {
+    setParticipantes([]);
+    setParticipantesError('');
+    if (!modalFormVisible || editando || !viajeSeleccionadoObj) return;
+    let vigente = true;
+    setCargandoParticipantes(true);
+    api.get(`/viajes/${viajeSeleccionadoObj.id}/participantes/`)
+      .then(({ data }) => { if (vigente) setParticipantes(data.participantes || []); })
+      .catch(() => { if (vigente) setParticipantesError('No se pudieron cargar los participantes.'); })
+      .finally(() => { if (vigente) setCargandoParticipantes(false); });
+    return () => { vigente = false; };
+  }, [viajeSeleccionadoObj, modalFormVisible, editando]);
+
+  const candidatosACalificar = useMemo(() => participantes.map((p) => ({
+    id: p.id, rol: p.rol, label: `${p.rol === 'conductor' ? 'Conductor' : 'Pasajero'}: ${p.correo || p.nombre}`,
+  })), [participantes]);
+
+  // Si hay exactamente 1 candidato (ej: el pasajero califica al conductor), preseleccionarlo automáticamente
+  useEffect(() => {
+    const conductor = candidatosACalificar.find((c) => c.rol === 'conductor');
+    const elegido = conductor || (candidatosACalificar.length === 1 ? candidatosACalificar[0] : null);
+    if (modalFormVisible && !editando && elegido) {
+      setForm((prev) => ({
+        ...prev,
+        calificado: String(elegido.id),
+      }));
+    }
+  }, [candidatosACalificar, editando, modalFormVisible]);
+
+  // Abrir modal para nueva calificación
+  const abrirNuevo = () => {
+    setEditando(null);
+    setForm({
+      viaje: viajesFinalizados[0]?.id ? String(viajesFinalizados[0].id) : '',
+      calificado: '',
+      puntaje: 5,
+      comentario: '',
+    });
+    setModalFormVisible(true);
+  };
+
+  // Abrir modal para editar
+  const abrirEditar = (calif) => {
+    setEditando(calif);
+    setForm({
+      viaje: String(calif.viaje),
+      calificado: String(calif.calificado),
+      puntaje: calif.puntaje,
+      comentario: calif.comentario || '',
+    });
+    setModalFormVisible(true);
+  };
+
+  // Guardar (Crear o Actualizar)
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setGuardando(true);
+    setError('');
+    setExito('');
+
+    try {
+      if (editando) {
+        await updateCalificacion(editando.id, {
+          puntaje: form.puntaje,
+          comentario: form.comentario,
+        });
+        setExito(`Calificación #${editando.id} actualizada correctamente.`);
+      } else {
+        if (!form.viaje || !candidatosACalificar.some((c) => String(c.id) === String(form.calificado))) {
+          setError('Debe seleccionar el viaje y el participante a calificar.');
+          setGuardando(false);
+          return;
+        }
+        await addCalificacion(form);
+        setExito('¡Calificación enviada exitosamente!');
+        setPagina(1);
+      }
+
+      setModalFormVisible(false);
+      setEditando(null);
+      await recargar();
+      await cargarPromedio();
+    } catch (err) {
+      setError(getError(err));
+    } finally {
+      setGuardando(false);
     }
   };
 
-  /* ── Estrellas interactivas y accesibles en el formulario ── */
-  const renderEstrellasSelector = () => {
-    const handleKeyDown = (e, val) => {
-      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        const nextVal = Math.min(5, val + 1);
-        setForm((prev) => ({ ...prev, puntaje: nextVal }));
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        const prevVal = Math.max(1, val - 1);
-        setForm((prev) => ({ ...prev, puntaje: prevVal }));
-      } else if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-        setForm((prev) => ({ ...prev, puntaje: val }));
-      }
-    };
-
-    return (
-      <div
-        className="d-flex align-items-center gap-1 my-2"
-        role="radiogroup"
-        aria-label="Puntaje de la experiencia de 1 a 5 estrellas"
-      >
-        {[1, 2, 3, 4, 5].map((val) => {
-          const checked = form.puntaje === val;
-          const filled = val <= form.puntaje;
-          return (
-            <button
-              type="button"
-              key={val}
-              role="radio"
-              aria-checked={checked}
-              aria-label={`${val} de 5 estrellas`}
-              tabIndex={checked ? 0 : -1}
-              className="btn btn-link p-1 text-decoration-none border-0 rounded"
-              onClick={() => setForm((prev) => ({ ...prev, puntaje: val }))}
-              onKeyDown={(e) => handleKeyDown(e, val)}
-              style={{
-                fontSize: '1.75rem',
-                color: filled ? '#f59e0b' : '#cbd5e1',
-                lineHeight: 1,
-              }}
-              title={`${val} estrella${val > 1 ? 's' : ''}`}
-            >
-              <i className={`bi ${filled ? 'bi-star-fill' : 'bi-star'}`} />
-            </button>
-          );
-        })}
-        <span className="ms-2 fw-bold text-dark fs-5" aria-live="polite">
-          {form.puntaje} / 5
-        </span>
-      </div>
-    );
-  };
-
-  /* ── Render de estrellas para tarjetas ── */
-  const renderEstrellasFijas = (puntaje) => {
-    return (
-      <div className="d-inline-flex align-items-center gap-1 text-warning">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <i key={i} className={`bi ${i <= puntaje ? 'bi-star-fill' : 'bi-star'} small`} />
-        ))}
-        <span className="ms-1 fw-bold text-dark small">{puntaje}.0</span>
-      </div>
-    );
+  // Confirmar eliminación
+  const [eliminando, setEliminando] = useState(false);
+  const confirmarEliminar = async () => {
+    if (!modalEliminar || eliminando) return;
+    setEliminando(true);
+    try {
+      await deleteCalificacion(modalEliminar.id);
+      setExito(`Calificación #${modalEliminar.id} eliminada.`);
+      setModalEliminar(null);
+      await recargar();
+      await cargarPromedio();
+    } catch (err) {
+      setError(getError(err));
+      setModalEliminar(null);
+    } finally {
+      setEliminando(false);
+    }
   };
 
   return (
-    <div className="d-flex flex-column gap-4">
-      {/* ── Encabezado ── */}
-      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
-        <div>
-          <h1 className="h4 fw-bold text-dark mb-1">
-            <i className="bi bi-star-fill text-warning me-2" />
-            Calificaciones & Reseñas
-          </h1>
-          <p className="text-secondary small mb-0">
-            Fomente la seguridad y confianza universitaria evaluando sus viajes compartidos
-          </p>
-        </div>
+    <>
+      {/* ═══════════════════════════════════════
+          ENCABEZADO
+      ═══════════════════════════════════════ */}
+      <div className="mb-4">
+        <p className="text-uppercase text-secondary small fw-semibold mb-1">
+          RaidU / Reputación & Comunidad
+        </p>
 
-        {tab !== 'nueva' && !esSoporte && (
-          <button
-            type="button"
-            className="btn btn-primary rounded-pill px-4 shadow-sm"
-            onClick={() => {
-              setEditId(null);
-              setForm({ viaje: '', calificado: '', puntaje: 5, comentario: '' });
-              setTab('nueva');
-            }}
-          >
-            <i className="bi bi-plus-lg me-1" />
-            Calificar Experiencia
-          </button>
-        )}
+        <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
+          <div>
+            <h1 className="h3 fw-bold mb-1">
+              <i className="bi bi-star-fill text-warning me-2" />
+              Calificaciones & Reseñas
+            </h1>
+            <p className="text-secondary mb-0">
+              Evaluación transparente de viajes compartidos finalizados en la UCR.
+            </p>
+          </div>
+
+          {!esSoporte && (
+            <button
+              type="button"
+              className="btn btn-primary d-inline-flex align-items-center gap-2 shadow-sm rounded-pill px-4"
+              onClick={abrirNuevo}
+            >
+              <i className="bi bi-plus-lg" />
+              <span>Nueva calificación</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* ── Alertas ── */}
-      {msg && (
-        <div className="alert alert-success alert-dismissible fade show rounded-4 py-3 d-flex align-items-center" role="alert">
-          <i className="bi bi-check-circle-fill fs-5 me-2" />
-          <div className="flex-grow-1 small fw-medium">{msg}</div>
-          <button type="button" className="btn-close" onClick={() => setMsg('')} aria-label="Cerrar" />
+      {/* ═══════════════════════════════════════
+          TARJETAS KPI DE REPUTACIÓN
+      ═══════════════════════════════════════ */}
+      <div className="row g-3 mb-4">
+        {/* Promedio Personal */}
+        <div className="col-12 col-md-4">
+          <div className="card border-0 shadow-sm rounded-4 h-100 bg-white">
+            <div className="card-body p-4 d-flex align-items-center gap-3">
+              <div
+                className="rounded-circle d-flex align-items-center justify-content-center text-white"
+                style={{
+                  width: 56,
+                  height: 56,
+                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  fontSize: '1.5rem',
+                }}
+              >
+                <i className="bi bi-award-fill" />
+              </div>
+              <div>
+                <small className="text-secondary fw-semibold text-uppercase d-block">
+                  Tu Promedio Recibido
+                </small>
+                <div className="d-flex align-items-baseline gap-2 mt-1">
+                  <span className="h3 fw-bold mb-0 text-dark">
+                    {promedioInfo.promedio !== null ? Number(promedioInfo.promedio).toFixed(1) : '—'}
+                  </span>
+                  {promedioInfo.promedio !== null && (
+                    <EstrellasPuntaje valor={Math.round(promedioInfo.promedio)} size="0.95rem" />
+                  )}
+                </div>
+                <small className="text-secondary">
+                  {promedioInfo.total} {promedioInfo.total === 1 ? 'evaluación recibida' : 'evaluaciones recibidas'}
+                </small>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
+
+        {/* Total de Calificaciones en Sistema */}
+        <div className="col-12 col-md-4">
+          <div className="card border-0 shadow-sm rounded-4 h-100 bg-white">
+            <div className="card-body p-4 d-flex align-items-center gap-3">
+              <div
+                className="rounded-circle d-flex align-items-center justify-content-center text-white"
+                style={{
+                  width: 56,
+                  height: 56,
+                  background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                  fontSize: '1.5rem',
+                }}
+              >
+                <i className="bi bi-chat-heart-fill" />
+              </div>
+              <div>
+                <small className="text-secondary fw-semibold text-uppercase d-block">
+                  Total Registradas
+                </small>
+                <h2 className="h3 fw-bold mb-0 text-dark mt-1">
+                  {totalRegistros}
+                </h2>
+                <small className="text-secondary">
+                  En el catálogo de calificaciones
+                </small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Viajes Finalizados Evaluables */}
+        <div className="col-12 col-md-4">
+          <div className="card border-0 shadow-sm rounded-4 h-100 bg-white">
+            <div className="card-body p-4 d-flex align-items-center gap-3">
+              <div
+                className="rounded-circle d-flex align-items-center justify-content-center text-white"
+                style={{
+                  width: 56,
+                  height: 56,
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  fontSize: '1.5rem',
+                }}
+              >
+                <i className="bi bi-check2-circle" />
+              </div>
+              <div>
+                <small className="text-secondary fw-semibold text-uppercase d-block">
+                  Viajes Finalizados
+                </small>
+                <h2 className="h3 fw-bold mb-0 text-dark mt-1">
+                  {viajesFinalizados.length}
+                </h2>
+                <small className="text-secondary">
+                  Habilitados para emitir calificación
+                </small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════
+          ALERTAS
+      ═══════════════════════════════════════ */}
       {error && (
-        <div className="alert alert-danger alert-dismissible fade show rounded-4 py-3 d-flex align-items-center" role="alert">
-          <i className="bi bi-exclamation-triangle-fill fs-5 me-2" />
-          <div className="flex-grow-1 small fw-medium">{error}</div>
+        <div className="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+          <i className="bi bi-exclamation-triangle-fill me-2" />
+          {error}
           <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Cerrar" />
         </div>
       )}
 
-      {/* ── Tarjeta de Reputación Personal ── */}
-      <div className="card-white p-4">
-        <div className="row g-3 align-items-center">
-          <div className="col-12 col-md-4 text-center border-end-md">
-            <div className="d-inline-flex flex-column align-items-center">
-              <div className="display-5 fw-bold text-dark mb-1">
-                {promedioInfo.promedio !== null ? Number(promedioInfo.promedio).toFixed(1) : '—'}
-              </div>
-              <div className="d-flex align-items-center gap-1 text-warning fs-5 mb-1">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <i
-                    key={i}
-                    className={`bi ${
-                      promedioInfo.promedio !== null && i <= Math.round(promedioInfo.promedio)
-                        ? 'bi-star-fill'
-                        : 'bi-star'
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className="text-secondary small">
-                {promedioInfo.total} valoración{promedioInfo.total !== 1 ? 'es' : ''} recibida{promedioInfo.total !== 1 ? 's' : ''}
-              </span>
-            </div>
-          </div>
-
-          <div className="col-12 col-md-8 ps-md-4">
-            <h6 className="fw-bold text-dark mb-2">Comunidad Universitaria de Confianza</h6>
-            <p className="text-secondary small mb-3">
-              Las calificaciones en RaidU son emitidas exclusivamente entre estudiantes y conductores que han completado
-              juntos un viaje intersedes. Esta retroalimentación premia la puntualidad, cordialidad y seguridad en ruta.
-            </p>
-            <div className="d-flex gap-2 flex-wrap">
-              <span className="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2 small">
-                <i className="bi bi-shield-check me-1" />Perfil Verificado UCR
-              </span>
-              <span className="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2 small">
-                <i className="bi bi-geo-alt me-1" />Sede del Pacífico
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Navegación por pestañas ── */}
-      <div className="d-flex justify-content-between align-items-center border-bottom pb-2 flex-wrap gap-2">
-        <ul className="nav nav-pills gap-2" role="tablist">
-          <li className="nav-item">
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-4 fw-medium ${
-                tab === 'recibidas' ? 'btn-primary' : 'btn-light text-secondary'
-              }`}
-              onClick={() => {
-                setTab('recibidas');
-                setEditId(null);
-              }}
-            >
-              <i className="bi bi-box-arrow-in-down me-1" />
-              Recibidas ({promedioInfo.total})
-            </button>
-          </li>
-          <li className="nav-item">
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-4 fw-medium ${
-                tab === 'realizadas' ? 'btn-primary' : 'btn-light text-secondary'
-              }`}
-              onClick={() => {
-                setTab('realizadas');
-                setEditId(null);
-              }}
-            >
-              <i className="bi bi-send me-1" />
-              Realizadas por Mí
-            </button>
-          </li>
-          {editId && (
-            <li className="nav-item">
-              <button type="button" className="btn btn-sm btn-warning rounded-pill px-4 fw-medium text-dark">
-                <i className="bi bi-pencil me-1" />
-                Editando #{editId}
-              </button>
-            </li>
-          )}
-        </ul>
-
-        {tab !== 'nueva' && (
-          <div className="d-flex align-items-center gap-2">
-            <label className="text-secondary small fw-medium mb-0">Filtrar:</label>
-            <select
-              className="form-select form-select-sm rounded-pill px-3 border-light-subtle"
-              style={{ width: 'auto', fontSize: '0.8rem' }}
-              value={filtroPuntaje}
-              onChange={(e) => setFiltroPuntaje(e.target.value)}
-            >
-              <option value="">Todas las estrellas</option>
-              <option value="5">5 Estrellas ★★★★★</option>
-              <option value="4">4 Estrellas ★★★★☆</option>
-              <option value="3">3 Estrellas ★★★☆☆</option>
-              <option value="2">2 Estrellas ★★☆☆☆</option>
-              <option value="1">1 Estrella ★☆☆☆☆</option>
-            </select>
-          </div>
-        )}
-      </div>
-
-      {/* ── Formulario de Calificación (tab === 'nueva') ── */}
-      {tab === 'nueva' && (
-        <div className="card-white p-4 border-top border-4 border-primary">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h5 className="fw-bold text-dark mb-0">
-              <i className={`bi ${editId ? 'bi-pencil-square' : 'bi-star'} text-primary me-2`} />
-              {editId ? 'Editar Calificación' : 'Evaluar un Viaje Finalizado'}
-            </h5>
-            <button
-              type="button"
-              className="btn btn-light btn-sm rounded-circle"
-              onClick={() => setTab('recibidas')}
-              title="Cancelar"
-            >
-              <i className="bi bi-x-lg" />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit}>
-            <div className="row g-3">
-              {/* Selector de viaje finalizado */}
-              {!editId ? (
-                <div className="col-12 col-md-6">
-                  <label className="form-label fw-semibold text-dark small">
-                    Viaje Finalizado <span className="text-danger">*</span>
-                  </label>
-                  <select
-                    className={`form-select ${formErrors.viaje ? 'is-invalid' : ''}`}
-                    value={form.viaje}
-                    onChange={(e) => handleViajeChange(e.target.value)}
-                    disabled={loadingFormSupport || saving}
-                  >
-                    <option value="">— Seleccione un viaje finalizado —</option>
-                    {viajesFinalizados.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        Viaje #{v.id} • {v.sede_origen} ➔ {v.sede_destino} (
-                        {v.fecha_hora ? new Date(v.fecha_hora).toLocaleDateString() : ''})
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.viaje && <div className="invalid-feedback">{formErrors.viaje}</div>}
-                  <div className="form-text">
-                    {viajesFinalizados.length === 0
-                      ? 'No hay viajes finalizados disponibles para calificar en este momento.'
-                      : 'Solo se pueden evaluar viajes que hayan concluido.'}
-                  </div>
-                </div>
-              ) : (
-                <div className="col-12 col-md-6">
-                  <label className="form-label fw-semibold text-dark small">Viaje Asociado</label>
-                  <input type="text" className="form-control" value={`Viaje #${form.viaje}`} disabled />
-                  <div className="form-text">El viaje asociado no se puede modificar.</div>
-                </div>
-              )}
-
-              {/* Selector del usuario a calificar */}
-              {!editId ? (
-                <div className="col-12 col-md-6">
-                  <label className="form-label fw-semibold text-dark small">
-                    Persona a Calificar <span className="text-danger">*</span>
-                  </label>
-                  <select
-                    className={`form-select ${formErrors.calificado ? 'is-invalid' : ''}`}
-                    value={form.calificado}
-                    onChange={(e) => setForm((prev) => ({ ...prev, calificado: e.target.value }))}
-                    disabled={!form.viaje || saving}
-                  >
-                    <option value="">
-                      {!form.viaje
-                        ? '— Primero elija un viaje —'
-                        : usuariosCandidatos.length === 0
-                        ? '— Sin participantes pendientes —'
-                        : '— Seleccione al compañero —'}
-                    </option>
-                    {usuariosCandidatos.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.label}
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.calificado && <div className="invalid-feedback">{formErrors.calificado}</div>}
-                  <div className="form-text">Conductor o pasajero confirmado del viaje.</div>
-                </div>
-              ) : (
-                <div className="col-12 col-md-6">
-                  <label className="form-label fw-semibold text-dark small">Usuario Calificado</label>
-                  <input type="text" className="form-control" value={`Usuario #${form.calificado}`} disabled />
-                  <div className="form-text">El usuario calificado no se puede modificar.</div>
-                </div>
-              )}
-
-              {/* Selector interactivo de estrellas */}
-              <div className="col-12">
-                <label className="form-label fw-semibold text-dark small mb-0">
-                  Puntaje de la Experiencia <span className="text-danger">*</span>
-                </label>
-                {renderEstrellasSelector()}
-                {formErrors.puntaje && <div className="text-danger small">{formErrors.puntaje}</div>}
-              </div>
-
-              {/* Comentario opcional */}
-              <div className="col-12">
-                <label className="form-label fw-semibold text-dark small">
-                  Comentario de Retroalimentación <span className="text-muted fw-normal">(Opcional)</span>
-                </label>
-                <textarea
-                  className="form-control"
-                  rows={3}
-                  placeholder="Describa la puntualidad, respeto, conducción segura y convivencia durante el viaje..."
-                  value={form.comentario}
-                  onChange={(e) => setForm((prev) => ({ ...prev, comentario: e.target.value }))}
-                  disabled={saving}
-                />
-              </div>
-            </div>
-
-            <div className="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-              <button
-                type="button"
-                className="btn btn-outline-secondary rounded-pill px-4"
-                onClick={() => setTab('recibidas')}
-                disabled={saving}
-              >
-                Cancelar
-              </button>
-              <button type="submit" className="btn btn-primary rounded-pill px-4" disabled={saving}>
-                {saving ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2" role="status" />
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-check-lg me-1" />
-                    {editId ? 'Guardar Cambios' : 'Publicar Calificación'}
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+      {exito && (
+        <div className="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+          <i className="bi bi-check-circle-fill me-2" />
+          {exito}
+          <button type="button" className="btn-close" onClick={() => setExito('')} aria-label="Cerrar" />
         </div>
       )}
 
-      {/* ── Listado de Calificaciones ── */}
-      {tab !== 'nueva' && (
-        <>
-          {loading ? (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status" />
-              <p className="mt-2 text-secondary small">Cargando valoraciones…</p>
-            </div>
-          ) : calificaciones.length === 0 ? (
-            <div className="card-white p-5 text-center">
-              <div className="bg-light rounded-circle d-inline-flex p-4 mb-3">
-                <i className="bi bi-star text-secondary fs-1" />
-              </div>
-              <h5 className="fw-semibold text-dark">
-                {tab === 'recibidas'
-                  ? 'Aún no has recibido calificaciones'
-                  : 'No has otorgado calificaciones todavía'}
-              </h5>
-              <p className="text-secondary small mb-3">
-                {tab === 'recibidas'
-                  ? 'Completa viajes compartidos con compañeros para comenzar a acumular estrellas en tu reputación.'
-                  : 'Evalúa a los conductores y pasajeros con quienes has compartido viaje para ayudar a la comunidad.'}
-              </p>
-              {tab === 'realizadas' && !esSoporte && (
+      {/* ═══════════════════════════════════════
+          LISTADO DE CALIFICACIONES
+      ═══════════════════════════════════════ */}
+      <section className="card border-0 shadow-sm rounded-4">
+        <div className="card-body p-4">
+          {/* BARRA DE FILTROS */}
+          <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+            <h2 className="h5 fw-bold mb-0">
+              Historial de Calificaciones
+            </h2>
+
+            <div className="d-flex flex-wrap gap-2">
+              {/* Modo de visualización */}
+              <select
+                className="form-select"
+                value={filtroModo}
+                onChange={(e) => {
+                  setFiltroModo(e.target.value);
+                  setPagina(1);
+                }}
+                style={{ minWidth: 170 }}
+              >
+                <option value="todas">Todas las del sistema</option>
+                <option value="recibidas">Recibidas por mí</option>
+                <option value="emitidas">Emitidas por mí</option>
+              </select>
+
+              {/* Filtro por Puntaje */}
+              <select
+                className="form-select"
+                value={filtroPuntaje}
+                onChange={(e) => {
+                  setFiltroPuntaje(e.target.value);
+                  setPagina(1);
+                }}
+                style={{ minWidth: 150 }}
+              >
+                <option value="">Todas las estrellas</option>
+                <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+                <option value="4">⭐⭐⭐⭐ (4)</option>
+                <option value="3">⭐⭐⭐ (3)</option>
+                <option value="2">⭐⭐ (2)</option>
+                <option value="1">⭐ (1)</option>
+              </select>
+
+              {/* Ordenamiento */}
+              <select
+                className="form-select"
+                value={orden}
+                onChange={(e) => {
+                  setOrden(e.target.value);
+                  setPagina(1);
+                }}
+                style={{ minWidth: 160 }}
+              >
+                <option value="-fecha">Más recientes</option>
+                <option value="fecha">Más antiguas</option>
+                <option value="-puntaje">Mayor puntaje</option>
+                <option value="puntaje">Menor puntaje</option>
+              </select>
+
+              {(filtroPuntaje || filtroModo !== 'todas' || orden !== '-fecha') && (
                 <button
                   type="button"
-                  className="btn btn-primary btn-sm rounded-pill px-4"
-                  onClick={() => setTab('nueva')}
+                  className="btn btn-outline-secondary"
+                  onClick={() => {
+                    setFiltroPuntaje('');
+                    setFiltroModo('todas');
+                    setOrden('-fecha');
+                    setPagina(1);
+                  }}
                 >
+                  <i className="bi bi-x-circle me-1" />
+                  Limpiar
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* TABLA O ESTADO DE CARGA */}
+          {cargando ? (
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Cargando...</span>
+              </div>
+              <p className="text-secondary mt-3 mb-0">Cargando calificaciones...</p>
+            </div>
+          ) : calificaciones.length === 0 ? (
+            <div className="text-center py-5">
+              <div
+                className="rounded-circle bg-light text-warning d-inline-flex align-items-center justify-content-center mb-3"
+                style={{ width: 70, height: 70 }}
+              >
+                <i className="bi bi-star fs-2" />
+              </div>
+              <h3 className="h5 fw-bold">No hay calificaciones registradas</h3>
+              <p className="text-secondary mb-3">
+                {filtroPuntaje || filtroModo !== 'todas'
+                  ? 'No hay calificaciones que coincidan con los filtros aplicados.'
+                  : 'Aún no se han emitido calificaciones para los viajes finalizados.'}
+              </p>
+              {!esSoporte && (
+                <button type="button" className="btn btn-outline-primary btn-sm rounded-pill" onClick={abrirNuevo}>
                   <i className="bi bi-plus-lg me-1" />
-                  Calificar mi primer viaje
+                  Calificar un viaje ahora
                 </button>
               )}
             </div>
           ) : (
-            <div className="row g-3">
-              {calificaciones.map((c) => {
-                const esMia = Number(c.calificador) === Number(user?.id);
-                return (
-                  <div className="col-12 col-md-6" key={c.id}>
-                    <div className="card-white p-4 h-100 d-flex flex-column justify-content-between">
-                      <div>
-                        {/* Cabecera de la tarjeta */}
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <div>
-                            {renderEstrellasFijas(c.puntaje)}
-                            <div className="text-muted small mt-1" style={{ fontSize: '0.75rem' }}>
-                              <i className="bi bi-calendar3 me-1" />
-                              {c.fecha
-                                ? new Date(c.fecha).toLocaleDateString('es-CR', {
-                                    dateStyle: 'medium',
-                                  })
-                                : 'Fecha no registrada'}
-                            </div>
+            <div className="table-responsive">
+              <table className="table table-hover align-middle">
+                <thead className="table-light">
+                  <tr>
+                    <th>ID</th>
+                    <th>Viaje</th>
+                    <th>Calificador</th>
+                    <th>Calificado</th>
+                    <th>Puntaje</th>
+                    <th>Comentario</th>
+                    <th>Fecha</th>
+                    <th className="text-end">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {calificaciones.map((calif) => {
+                    const viaje = viajesMap[calif.viaje];
+                    const esAutor = user?.id && Number(calif.calificador) === Number(user.id);
+                    const puedeModificar = (esAutor || esAdmin) && !esSoporte;
+
+                    return (
+                      <tr key={calif.id}>
+                        {/* ID */}
+                        <td className="text-secondary fw-medium">
+                          #{calif.id}
+                        </td>
+
+                        {/* VIAJE */}
+                        <td>
+                          <div className="fw-semibold">
+                            {viaje?.nombre || `Viaje #${calif.viaje}`}
                           </div>
+                          {viaje && (
+                            <small className="text-secondary">
+                              {nombresSede[viaje.sede_origen] || viaje.sede_origen} →{' '}
+                              {nombresSede[viaje.sede_destino] || viaje.sede_destino}
+                            </small>
+                          )}
+                        </td>
 
-                          <span className="badge bg-light text-secondary border small">
-                            Viaje #{c.viaje}
+                        {/* CALIFICADOR */}
+                        <td>
+                          <span className={`badge ${esAutor ? 'bg-primary-subtle text-primary' : 'text-bg-light border'}`}>
+                            {esAutor ? 'Tú (Calificador)' : `Usuario #${calif.calificador}`}
                           </span>
+                        </td>
+
+                        {/* CALIFICADO */}
+                        <td>
+                          <span className="badge text-bg-secondary">
+                            Usuario #{calif.calificado}
+                          </span>
+                        </td>
+
+                        {/* PUNTAJE */}
+                        <td>
+                          <div className="d-flex align-items-center gap-2">
+                            <EstrellasPuntaje valor={calif.puntaje} size="0.95rem" />
+                            <span className="fw-bold small">({calif.puntaje})</span>
+                          </div>
+                        </td>
+
+                        {/* COMENTARIO */}
+                        <td style={{ maxWidth: 260 }}>
+                          <span className="text-truncate d-block small" title={calif.comentario}>
+                            {calif.comentario || <em className="text-secondary">Sin comentario</em>}
+                          </span>
+                        </td>
+
+                        {/* FECHA */}
+                        <td className="small text-secondary">
+                          {formatFechaCorta(calif.fecha)}
+                        </td>
+
+                        {/* ACCIONES */}
+                        <td className="text-end text-nowrap">
+                          {puedeModificar ? (
+                            <>
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary btn-sm me-2"
+                                onClick={() => abrirEditar(calif)}
+                                title="Editar calificación"
+                              >
+                                <i className="bi bi-pencil me-1" />
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-outline-danger btn-sm"
+                                onClick={() => setModalEliminar(calif)}
+                                title="Eliminar calificación"
+                              >
+                                <i className="bi bi-trash me-1" />
+                                Eliminar
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-secondary small fst-italic">Solo lectura</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* PAGINACIÓN */}
+          {totalPaginas > 1 && (
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-3 border-top mt-3">
+              <small className="text-secondary">
+                Página {pagina} de {totalPaginas} ({totalRegistros} {totalRegistros === 1 ? 'registro' : 'registros'})
+              </small>
+              <div className="btn-group">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm"
+                  disabled={pagina <= 1}
+                  onClick={() => setPagina((p) => Math.max(p - 1, 1))}
+                >
+                  <i className="bi bi-chevron-left me-1" />
+                  Anterior
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm"
+                  disabled={pagina >= totalPaginas}
+                  onClick={() => setPagina((p) => Math.min(p + 1, totalPaginas))}
+                >
+                  Siguiente
+                  <i className="bi bi-chevron-right ms-1" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════
+          MODAL RESPONSIVE DE EMISIÓN / EDICIÓN
+          (Funciona perfectamente en móvil y desktop)
+      ═══════════════════════════════════════ */}
+      {modalFormVisible && !esSoporte && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" role="dialog" style={{ zIndex: 1070 }}>
+            <div className="modal-dialog modal-dialog-centered modal-lg">
+              <div className="modal-content border-0 shadow-lg rounded-4">
+                <div className="modal-header border-bottom pb-3">
+                  <div className="d-flex align-items-center gap-2">
+                    <i className="bi bi-star-half text-warning fs-4" />
+                    <div>
+                      <h3 className="modal-title h5 fw-bold mb-0">
+                        {editando ? `Editar Calificación #${editando.id}` : 'Emitir Calificación de Viaje'}
+                      </h3>
+                      <small className="text-secondary">
+                        {editando
+                          ? 'Modifique el puntaje de estrellas o el comentario.'
+                          : 'Asigne su calificación al participante del viaje finalizado.'}
+                      </small>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => {
+                      setModalFormVisible(false);
+                      setEditando(null);
+                    }}
+                    aria-label="Cerrar"
+                  />
+                </div>
+
+                <form onSubmit={handleSubmit}>
+                  <div className="modal-body p-4">
+                    <div className="row g-3">
+                      {/* AVISO SI NO TIENE VIAJES PARTICIPADOS */}
+                      {viajesFinalizados.length === 0 && !editando && (
+                        <div className="col-12">
+                          <div className="alert alert-warning mb-1">
+                            <i className="bi bi-exclamation-triangle-fill me-2" />
+                            <strong>Sin viajes finalizados propios:</strong> Solo puedes emitir calificaciones para viajes en los que hayas participado (como conductor o como pasajero con reserva confirmada).
+                          </div>
                         </div>
+                      )}
 
-                        {/* Comentario */}
-                        <p className="text-dark small my-3 fst-italic">
-                          {c.comentario ? `"${c.comentario}"` : <span className="text-muted">Sin comentario adicional.</span>}
-                        </p>
+                      {/* SELECT DE VIAJE */}
+                      <div className="col-12 col-md-6">
+                        <label htmlFor="calif-viaje" className="form-label fw-semibold">
+                          Viaje Finalizado *
+                        </label>
+                        <select
+                          id="calif-viaje"
+                          className="form-select"
+                          value={form.viaje}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              viaje: e.target.value,
+                              calificado: '',
+                            }))
+                          }
+                          disabled={Boolean(editando) || viajesFinalizados.length === 0}
+                          required
+                        >
+                          <option value="">
+                            {viajesFinalizados.length === 0
+                              ? 'No tienes viajes finalizados en los que hayas participado'
+                              : 'Seleccione un viaje finalizado...'}
+                          </option>
+                          {viajesFinalizados.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.nombre ? `${v.nombre} — ` : ''}
+                              {formatFechaCorta(v.fecha_hora)} ·{' '}
+                              {nombresSede[v.sede_origen] || v.sede_origen} →{' '}
+                              {nombresSede[v.sede_destino] || v.sede_destino} · Viaje #{v.id}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                        <div className="d-flex align-items-center gap-2 small text-secondary pt-2 border-top">
-                          <i className="bi bi-person-fill text-primary" />
-                          <span>
-                            {tab === 'recibidas'
-                              ? `Calificado por Usuario #${c.calificador}`
-                              : `Otorgada a Usuario #${c.calificado}`}
+                      {/* DESTINATARIO (CALIFICADO) */}
+                      <div className="col-12 col-md-6">
+                        <label htmlFor="calif-destinatario" className="form-label fw-semibold">
+                          Usuario a Calificar *
+                        </label>
+                        {editando ? (
+                          <input
+                            id="calif-destinatario"
+                            type="text"
+                            className="form-control"
+                            value={`Usuario #${editando.calificado}`}
+                            disabled
+                          />
+                        ) : candidatosACalificar.length > 0 ? (
+                          <select
+                            id="calif-destinatario"
+                            className="form-select"
+                            value={form.calificado}
+                            onChange={(e) => setForm((prev) => ({ ...prev, calificado: e.target.value }))}
+                            required
+                          >
+                            <option value="">Seleccione al participante...</option>
+                            {candidatosACalificar.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <p id="calif-destinatario" className="text-secondary small mb-0" role="status">
+                            {cargandoParticipantes ? 'Cargando participantes...' : participantesError || (form.viaje ? 'No hay participantes disponibles para seleccionar en este viaje.' : 'Seleccioná un viaje para ver a quién podés calificar.')}
+                          </p>
+                        )}
+                        <small className="text-secondary d-block mt-1">
+                          Solo pueden evaluarse personas que hayan participado en el viaje.
+                        </small>
+                      </div>
+
+                      {/* PUNTAJE (ESTRELLAS INTERACTIVAS) */}
+                      <div className="col-12">
+                        <label className="form-label fw-semibold d-block mb-1">
+                          Puntaje ({form.puntaje} {form.puntaje === 1 ? 'estrella' : 'estrellas'}) *
+                        </label>
+                        <div className="p-3 bg-light rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                          <EstrellasPuntaje
+                            valor={Number(form.puntaje)}
+                            size="2rem"
+                            interactive
+                            onChange={(p) => setForm((prev) => ({ ...prev, puntaje: p }))}
+                          />
+                          <span className="fw-bold text-dark fs-5">
+                            {form.puntaje} / 5
                           </span>
                         </div>
                       </div>
 
-                      {/* Acciones para el autor o admin */}
-                      {(esMia || esAdmin) && (
-                        <div className="d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
-                          {esMia && (
-                            <button
-                              type="button"
-                              className="btn btn-outline-primary btn-sm rounded-pill px-3 py-1"
-                              style={{ fontSize: '0.75rem' }}
-                              onClick={() => abrirEditar(c)}
-                            >
-                              <i className="bi bi-pencil me-1" />Editar
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            className="btn btn-outline-danger btn-sm rounded-pill px-3 py-1"
-                            style={{ fontSize: '0.75rem' }}
-                            onClick={() => eliminarCalificacion(c.id)}
-                            disabled={eliminandoId === c.id || saving}
-                          >
-                            {eliminandoId === c.id ? (
-                              <>
-                                <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />
-                                Eliminando...
-                              </>
-                            ) : (
-                              <>
-                                <i className="bi bi-trash me-1" />Eliminar
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      )}
+                      {/* COMENTARIO */}
+                      <div className="col-12">
+                        <label htmlFor="calif-comentario" className="form-label fw-semibold">
+                          Comentario u Observaciones (Opcional)
+                        </label>
+                        <textarea
+                          id="calif-comentario"
+                          rows="3"
+                          className="form-control"
+                          placeholder="Escriba cómo estuvo la experiencia, puntualidad, respeto, etc..."
+                          value={form.comentario}
+                          onChange={(e) => setForm((prev) => ({ ...prev, comentario: e.target.value }))}
+                          maxLength={500}
+                        />
+                        <small className="text-secondary">Máximo 500 caracteres.</small>
+                      </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
 
-          {/* ── Paginación ── */}
-          {totalPages > 1 && (
-            <nav className="mt-4 d-flex justify-content-center" aria-label="Navegación de calificaciones">
-              <ul className="pagination pagination-sm mb-0">
-                <li className={`page-item ${page <= 1 ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={() => cargarCalificaciones(page - 1)}>
-                    <i className="bi bi-chevron-left me-1" />Anterior
-                  </button>
-                </li>
-                {[...Array(totalPages)].map((_, i) => (
-                  <li key={i + 1} className={`page-item ${page === i + 1 ? 'active' : ''}`}>
-                    <button className="page-link" onClick={() => cargarCalificaciones(i + 1)}>
-                      {i + 1}
+                  <div className="modal-footer border-top">
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={() => {
+                        setModalFormVisible(false);
+                        setEditando(null);
+                      }}
+                      disabled={guardando}
+                    >
+                      Cancelar
                     </button>
-                  </li>
-                ))}
-                <li className={`page-item ${page >= totalPages ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={() => cargarCalificaciones(page + 1)}>
-                    Siguiente<i className="bi bi-chevron-right ms-1" />
-                  </button>
-                </li>
-              </ul>
-            </nav>
-          )}
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={guardando || (!editando && viajesFinalizados.length === 0)}
+                    >
+                      <i className="bi bi-send-fill me-2" />
+                      {guardando ? 'Guardando...' : editando ? 'Guardar Cambios' : 'Enviar Calificación'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" style={{ zIndex: 1060 }} />
         </>
       )}
-    </div>
+
+      {/* ═══════════════════════════════════════
+          MODAL DE CONFIRMACIÓN DE ELIMINACIÓN
+      ═══════════════════════════════════════ */}
+      {modalEliminar && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" role="dialog" style={{ zIndex: 1070 }}>
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content border-0 shadow-lg rounded-4">
+                <div className="modal-header border-bottom-0 pb-0">
+                  <h3 className="modal-title h5 fw-bold text-danger">
+                    <i className="bi bi-trash me-2" />
+                    Eliminar Calificación #{modalEliminar.id}
+                  </h3>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    disabled={eliminando}
+                    onClick={() => setModalEliminar(null)}
+                    aria-label="Cerrar"
+                  />
+                </div>
+                <div className="modal-body py-3">
+                  <p className="mb-2">
+                    ¿Está seguro de que desea eliminar la calificación de{' '}
+                    <strong>{modalEliminar.puntaje} estrellas</strong> al Usuario #{modalEliminar.calificado} en el Viaje #{modalEliminar.viaje}?
+                  </p>
+                  <p className="small text-secondary mb-0">
+                    Esta acción actualizará el promedio de reputación del usuario evaluado.
+                  </p>
+                </div>
+                <div className="modal-footer border-top-0 pt-0">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    disabled={eliminando}
+                    onClick={() => setModalEliminar(null)}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    disabled={eliminando}
+                    onClick={confirmarEliminar}
+                  >
+                    Sí, eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" style={{ zIndex: 1060 }} />
+        </>
+      )}
+    </>
   );
 }

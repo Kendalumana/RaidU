@@ -139,27 +139,6 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
-.topbar-search {
-  max-width: 380px;
-  width: 100%;
-}
-
-.topbar-search .form-control {
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 0.55rem 1rem 0.55rem 2.4rem;
-  font-size: 0.875rem;
-  color: #1e293b;
-  transition: all 0.2s ease;
-}
-
-.topbar-search .form-control:focus {
-  background-color: #ffffff;
-  border-color: #0284c7;
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
-}
-
 /* ── Mobile Layout ── */
 @media (max-width: 991.98px) {
   .app-sidebar {

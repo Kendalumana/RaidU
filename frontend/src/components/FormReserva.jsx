@@ -12,31 +12,55 @@ const nombresSede = {
   puntarenas: 'Puntarenas',
 };
 
+function formatFechaCorta(fechaIso) {
+  if (!fechaIso) return '';
+  const d = new Date(fechaIso);
+  return d.toLocaleDateString('es-CR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export default function FormReserva({
   reserva,
   viajes,
   cargandoViajes = false,
   userId,
+  viajesReservadosIds = new Set(),
   onSave,
   onCancel,
   saving,
 }) {
   const [form, setForm] = useState(initial);
 
-  // Viajes que realmente pueden reservarse.
+  // Viajes que realmente pueden reservarse (ordenados por fecha).
+  // Se excluyen:
+  // - Viajes pasados (cuya fecha_hora ya ocurrió)
+  // - Viajes propios (conducidos por el usuario)
+  // - Viajes donde el usuario ya tiene reserva registrada (confirmada o cancelada)
   const viajesDisponibles = useMemo(() => {
-    return viajes.filter((viaje) => {
-      const esPropio =
-        userId &&
-        Number(viaje.conductor) === Number(userId);
+    const ahora = new Date();
+    return viajes
+      .filter((viaje) => {
+        const esPropio =
+          userId &&
+          Number(viaje.conductor) === Number(userId);
 
-      return (
-        viaje.estado === 'publicado' &&
-        viaje.cupos_disponibles > 0 &&
-        !esPropio
-      );
-    });
-  }, [viajes, userId]);
+        const yaTieneReserva = viajesReservadosIds.has(Number(viaje.id));
+        const esPasado = new Date(viaje.fecha_hora) <= ahora;
+
+        return (
+          viaje.estado === 'publicado' &&
+          viaje.cupos_disponibles > 0 &&
+          !esPropio &&
+          !yaTieneReserva &&
+          !esPasado
+        );
+      })
+      .sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
+  }, [viajes, userId, viajesReservadosIds]);
 
   useEffect(() => {
     if (reserva) {
@@ -56,12 +80,7 @@ export default function FormReserva({
     (viaje) => Number(viaje.id) === Number(form.viaje)
   );
 
-  // Al editar se pueden usar los cupos actuales +
-  // los que todavía estén disponibles.
-  const maxCupos = reserva
-    ? Number(reserva.cupos) +
-      Number(viajeSeleccionado?.cupos_disponibles || 0)
-    : Number(viajeSeleccionado?.cupos_disponibles || 1);
+  const maxCupos = Number(reserva?.cupos || 0) + Number(viajeSeleccionado?.cupos_disponibles || 0);
 
   const change = ({ target }) => {
     const { name, value } = target;
@@ -113,7 +132,7 @@ export default function FormReserva({
 
             <small className="text-secondary">
               {reserva
-                ? 'Modifique la cantidad de cupos reservados.'
+                ? `Modifique la cantidad de cupos de su reserva.`
                 : 'Seleccione un viaje disponible y la cantidad de cupos.'}
             </small>
           </div>
@@ -167,14 +186,15 @@ export default function FormReserva({
                     key={viaje.id}
                     value={viaje.id}
                   >
-                    #{viaje.id} ·{' '}
+                    {viaje.nombre ? `${viaje.nombre} — ` : ''}
+                    #{viaje.id} · {formatFechaCorta(viaje.fecha_hora)} ·{' '}
                     {nombresSede[viaje.sede_origen] ||
                       viaje.sede_origen}
                     {' → '}
                     {nombresSede[viaje.sede_destino] ||
                       viaje.sede_destino}
                     {' · '}
-                    {viaje.cupos_disponibles} cupos
+                    {viaje.cupos_disponibles} cupos libres
                   </option>
                 ))}
               </select>
@@ -207,10 +227,10 @@ export default function FormReserva({
               </select>
 
               {viajeSeleccionado && (
-                <small className="text-secondary">
+                <small className="text-secondary d-block mt-1">
                   {reserva
                     ? `${reserva.cupos} reservados + ${viajeSeleccionado.cupos_disponibles} libres = máximo ${maxCupos}`
-                    : `${maxCupos} cupos disponibles`}
+                    : `Disponibles en viaje: ${maxCupos}`}
                 </small>
               )}
             </div>

@@ -21,6 +21,11 @@ export default function FormViaje({
       <div className="card-body p-4">
         <form onSubmit={onSubmit}>
           <div className="row g-3">
+                <div className="col-12">
+                  <label htmlFor="nombre" className="form-label fw-semibold">Nombre del viaje (opcional)</label>
+                  <input id="nombre" name="nombre" className="form-control" maxLength={100} value={form.nombre} onChange={onChange} disabled={saving} placeholder="Ej: Viaje a la U por la mañana" />
+                  <div className="form-text">Ayuda a reconocer este viaje en las reservas y calificaciones.</div>
+                </div>
             {/* Selector de vehículo */}
             <div className="col-md-6 col-lg-4">
               <label htmlFor="vehiculo" className="form-label fw-semibold">

@@ -74,14 +74,9 @@ export default function Dashboard() {
     setFailedCards((actual) => ({ ...actual, viajes: false }));
 
     try {
-      const viajes = await obtenerTodosLosResultados('/viajes/');
-      const reservables = viajes.filter((viaje) => {
-        const estaPublicado = viaje.estado === 'publicado';
-        const tieneCupos = Number(viaje.cupos_disponibles) > 0;
-        const esPropio = Number(viaje.conductor) === Number(user?.id);
-        return estaPublicado && tieneCupos && (esStaff || !esPropio);
-      });
-      setStats((actual) => ({ ...actual, viajes: reservables.length }));
+      const params = esStaff ? { disponibles: true } : { reservables: true };
+      const { data } = await api.get('/viajes/', { params });
+      setStats((actual) => ({ ...actual, viajes: data.total_registros }));
     } catch {
       setStats((actual) => ({ ...actual, viajes: null }));
       setFailedCards((actual) => ({ ...actual, viajes: true }));
@@ -156,7 +151,7 @@ export default function Dashboard() {
         ? 'No se pudieron cargar los vehículos'
         : stats.vehiculos === 1 ? 'Vehículo registrado' : 'Vehículos registrados',
       unavailable: failedCards.vehiculos,
-      icon: 'bi-truck',
+      icon: 'bi-car-front',
       iconColor: '#0284c7',
       iconBg: '#e0f2fe',
       pill: stats.vehiculos > 0 ? '▲ Conductor Activo' : '● Sin vehículo aún',
@@ -363,7 +358,7 @@ export default function Dashboard() {
           {(activeTab === 'Todas' || activeTab === 'Gestión') && (
             <>
               <Link to="/vehiculos" className="btn btn-outline-primary btn-sim-action flex-grow-1">
-                <i className="bi bi-truck" />
+                <i className="bi bi-car-front" />
                 Vehículos
               </Link>
               <Link to="/perfil" className="btn btn-outline-secondary btn-sim-action flex-grow-1">

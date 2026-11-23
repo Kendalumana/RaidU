@@ -2,6 +2,8 @@ from config.paginacion import respuesta_paginada
 from django.db import transaction
 from django.db.models import Sum, Q
 from django.db.models.deletion import ProtectedError
+from django.utils import timezone
+from django.shortcuts import get_object_or_404
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -12,6 +14,24 @@ from usuarios.permisos import es_soporte
 from .models import Viaje
 from .serializers import ViajeSerializer, FiltrosViajeSerializer
 from reservas.services import recalcular_viaje
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def participantes_viaje(request, id):
+    viaje = get_object_or_404(Viaje.objects.select_related('conductor'), pk=id)
+    reservas = viaje.reservas.filter(estado='confirmada').select_related('pasajero')
+    if viaje.conductor_id != request.user.id and not reservas.filter(pasajero=request.user).exists():
+        return Response({'detail': 'Solo los participantes pueden consultar este viaje.'}, status=403)
+    if viaje.estado != Viaje.Estado.FINALIZADO:
+        return Response({'detail': 'Solo se pueden calificar viajes finalizados.'}, status=400)
+
+    def participante(usuario, rol):
+        return {'id': usuario.pk, 'nombre': usuario.get_full_name().strip() or f'Usuario {usuario.pk}', 'correo': usuario.email, 'rol': rol}
+
+    personas = [participante(viaje.conductor, 'conductor')]
+    personas.extend(participante(reserva.pasajero, 'pasajero') for reserva in reservas)
+    return Response({'participantes': [persona for persona in personas if persona['id'] != request.user.id]})
 
 
 @api_view(['GET', 'POST'])
@@ -28,11 +48,15 @@ def viajes_api(request):
             ).distinct()
         else:
             viajes = Viaje.objects.all()
+        if datos.get("disponibles") or datos.get("reservables"):
+            viajes = viajes.filter(estado=Viaje.Estado.PUBLICADO, fecha_hora__gt=timezone.now(), cupos_disponibles__gt=0)
+        if datos.get("reservables"):
+            viajes = viajes.exclude(conductor=request.user).exclude(reservas__pasajero=request.user)
         campos = {'sede_origen': 'sede_origen', 'sede_destino': 'sede_destino', 'fecha': 'fecha_hora__date', 'estado': 'estado', 'cupos_minimos': 'cupos_disponibles__gte'}
         for parametro, campo in campos.items():
             if parametro in datos:
                 viajes = viajes.filter(**{campo: datos[parametro]})
-        viajes = viajes.order_by(datos.get('ordering', 'fecha_hora'), 'id')
+        viajes = viajes.select_related("conductor", "vehiculo").order_by(datos.get('ordering', 'fecha_hora'), 'id')
 
         return respuesta_paginada(
             viajes,
@@ -102,7 +126,7 @@ def mis_viajes_api(request):
     for parametro, campo in campos.items():
         if parametro in datos:
             viajes = viajes.filter(**{campo: datos[parametro]})
-    viajes = viajes.order_by(datos.get('ordering', 'fecha_hora'), 'id')
+    viajes = viajes.select_related("conductor", "vehiculo").order_by(datos.get('ordering', 'fecha_hora'), 'id')
 
     return respuesta_paginada(
         viajes,

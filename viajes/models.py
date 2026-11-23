@@ -16,6 +16,7 @@ class Viaje(models.Model):
         FINALIZADO = 'finalizado', 'Finalizado'
         CANCELADO = 'cancelado', 'Cancelado'
 
+    nombre = models.CharField(max_length=100, blank=True, default='')
     conductor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
                                   related_name='viajes_conducidos')
     vehiculo = models.ForeignKey('vehiculos.Vehiculo', on_delete=models.PROTECT,

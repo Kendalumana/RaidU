@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { api, getError } from '../api/client.js';
 import { Link } from 'react-router-dom';
@@ -10,7 +10,7 @@ export default function UsuariosPage() {
 
   /* ── Estado de listado ── */
   const [usuarios, setUsuarios] = useState([]);
-  const [todosLosVehiculos, setTodosLosVehiculos] = useState(null);
+  const ultimaConsulta = useRef(0);
   const [vehiculosPorUsuario, setVehiculosPorUsuario] = useState({});
   const [erroresVehiculosUsuario, setErroresVehiculosUsuario] = useState({});
   const [cargandoVehiculosUsuario, setCargandoVehiculosUsuario] = useState(null);
@@ -32,30 +32,25 @@ export default function UsuariosPage() {
   /* ═══ Cargar usuarios y catálogo de vehículos para correlación ═══ */
   const cargar = useCallback(
     async () => {
+      const consulta = ++ultimaConsulta.current;
       setLoading(true);
       setError('');
       try {
-        const { data: primeraPagina } = await api.get('/usuarios/?page=1');
-        const cantidadPaginas = Math.max(Number(primeraPagina.total_pages) || 1, 1);
-        const todosLosUsuarios = [...(primeraPagina.results || [])];
-
-        if (cantidadPaginas > 1) {
-          const solicitudes = Array.from({ length: cantidadPaginas - 1 }, (_, indice) =>
-            api.get(`/usuarios/?page=${indice + 2}`)
-          );
-          const respuestas = await Promise.all(solicitudes);
-          respuestas.forEach(({ data }) => todosLosUsuarios.push(...(data.results || [])));
-        }
-
-        setUsuarios(todosLosUsuarios);
-        setTotalCount(Number(primeraPagina.count) || todosLosUsuarios.length);
+        const { data } = await api.get('/usuarios/', {
+          params: { page, search: search.trim(), estado: filtroEstado, rol: filtroRol, correo: filtroCorreo },
+        });
+        if (consulta !== ultimaConsulta.current) return;
+        setUsuarios(data.results);
+        setTotalCount(data.count);
       } catch (err) {
-        setError(getError(err));
+        if (consulta !== ultimaConsulta.current) return;
+        if (err.response?.status === 404 && page > 1) setPage(page - 1);
+        else setError(getError(err));
       } finally {
-        setLoading(false);
+        if (consulta === ultimaConsulta.current) setLoading(false);
       }
     },
-    []
+    [page, search, filtroEstado, filtroRol, filtroCorreo]
   );
 
   useEffect(() => {
@@ -68,24 +63,15 @@ export default function UsuariosPage() {
     setErroresVehiculosUsuario((prev) => ({ ...prev, [userId]: '' }));
 
     try {
-      let catalogoCompleto = todosLosVehiculos;
-      if (catalogoCompleto === null) {
-        const primeraRespuesta = await api.get('/vehiculos/?page=1');
-        const primeraPagina = primeraRespuesta.data;
-        catalogoCompleto = [...(primeraPagina.results || [])];
-        const totalPaginasVehiculos = Math.max(Number(primeraPagina.total_pages) || 1, 1);
-
-        for (let paginaVehiculos = 2; paginaVehiculos <= totalPaginasVehiculos; paginaVehiculos += 1) {
-          const respuesta = await api.get(`/vehiculos/?page=${paginaVehiculos}`);
-          catalogoCompleto.push(...(respuesta.data.results || []));
-        }
-
-        setTodosLosVehiculos(catalogoCompleto);
-      }
-
-      const vehiculosActivos = catalogoCompleto.filter(
-        (vehiculo) => Number(vehiculo.propietario) === Number(userId) && vehiculo.activo
-      );
+      const vehiculosActivos = [];
+      let pagina = 1;
+      let paginas;
+      do {
+        const { data } = await api.get('/vehiculos/', { params: { propietario: userId, activo: 'true', page: pagina } });
+        vehiculosActivos.push(...data.results);
+        paginas = data.total_pages;
+        pagina++;
+      } while (pagina <= paginas);
       setVehiculosPorUsuario((prev) => ({ ...prev, [userId]: vehiculosActivos }));
     } catch (err) {
       setErroresVehiculosUsuario((prev) => ({ ...prev, [userId]: getError(err) }));
@@ -162,51 +148,7 @@ export default function UsuariosPage() {
     }
   };
 
-  /* ═══ Filtros locales reactivos sobre la página actual ═══ */
-  const usuariosFiltrados = useMemo(() => {
-    return usuarios.filter((u) => {
-      // Búsqueda por texto (nombre, apellido, email)
-      const q = search.trim().toLowerCase();
-      const matchText =
-        !q ||
-        (u.first_name && u.first_name.toLowerCase().includes(q)) ||
-        (u.last_name && u.last_name.toLowerCase().includes(q)) ||
-        (u.email && u.email.toLowerCase().includes(q)) ||
-        (u.username && u.username.toLowerCase().includes(q));
-
-      // Filtro por estado activo/inactivo
-      const matchEstado =
-        filtroEstado === 'todos' ||
-        (filtroEstado === 'activo' && u.activo) ||
-        (filtroEstado === 'inactivo' && !u.activo);
-
-      // Filtro por rol
-      const matchRol =
-        filtroRol === 'todos' ||
-        (filtroRol === 'admin' && (u.es_admin || u.rol === 'admin')) ||
-        (filtroRol === 'soporte' && (u.es_soporte || u.rol === 'soporte')) ||
-        (filtroRol === 'estudiante' && u.rol === 'estudiante');
-
-      // Filtro por correo institucional
-      const esInstitucional = u.email && u.email.toLowerCase().endsWith('@ucr.ac.cr');
-      const matchCorreo =
-        filtroCorreo === 'todos' ||
-        (filtroCorreo === 'institucional' && esInstitucional) ||
-        (filtroCorreo === 'no_institucional' && !esInstitucional);
-
-      return matchText && matchEstado && matchRol && matchCorreo;
-    });
-  }, [usuarios, search, filtroEstado, filtroRol, filtroCorreo]);
-
-  const totalPages = Math.max(1, Math.ceil(usuariosFiltrados.length / 10));
-  const usuariosDePagina = useMemo(
-    () => usuariosFiltrados.slice((page - 1) * 10, page * 10),
-    [usuariosFiltrados, page]
-  );
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+  const totalPages = Math.max(1, Math.ceil(totalCount / 10));
 
   /* Defensa adicional: Django permite lectura a Admin y Soporte. */
   if (!puedeListar) {
@@ -356,7 +298,7 @@ export default function UsuariosPage() {
           <div className="spinner-border text-danger" role="status" />
           <p className="mt-2 text-secondary">Cargando usuarios registrados…</p>
         </div>
-      ) : usuariosFiltrados.length === 0 ? (
+      ) : usuarios.length === 0 ? (
         <div className="card border-0 shadow-sm">
           <div className="card-body text-center py-5">
             <i className="bi bi-people text-secondary fs-1 mb-2 d-block" />
@@ -370,14 +312,14 @@ export default function UsuariosPage() {
         <>
           <div className="d-flex justify-content-between align-items-center mb-2 px-1">
             <span className="text-secondary small">
-              Mostrando <strong>{usuariosDePagina.length}</strong> de <strong>{usuariosFiltrados.length}</strong> usuarios coincidentes (total del directorio: {totalCount})
+              Mostrando <strong>{usuarios.length}</strong> de <strong>{totalCount}</strong> usuarios coincidentes
             </span>
             <span className="badge bg-light text-secondary border">Página {page} de {totalPages}</span>
           </div>
 
           {/* Cards responsivas para móvil */}
           <div className="d-md-none">
-            {usuariosDePagina.map((u) => {
+            {usuarios.map((u) => {
               const totalVehiculos = u.cantidad_vehiculos;
               const esInstitucional = u.email && u.email.toLowerCase().endsWith('@ucr.ac.cr');
               const isExpanded = expandedUserId === u.id;
@@ -414,7 +356,7 @@ export default function UsuariosPage() {
                         onClick={() => toggleVehiculos(u)}
                         disabled={cargandoVehiculosUsuario !== null}
                       >
-                        <i className="bi bi-truck me-1" />
+                        <i className="bi bi-car-front me-1" />
                         {cargandoVehiculosUsuario === u.id
                           ? 'Cargando...'
                           : `${totalVehiculos ?? '-'} vehículo${totalVehiculos !== 1 ? 's' : ''}`}
@@ -464,7 +406,7 @@ export default function UsuariosPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {usuariosDePagina.map((u) => {
+                    {usuarios.map((u) => {
                       const totalVehiculos = u.cantidad_vehiculos;
                       const esInstitucional = u.email && u.email.toLowerCase().endsWith('@ucr.ac.cr');
                       const isExpanded = expandedUserId === u.id;
@@ -512,7 +454,7 @@ export default function UsuariosPage() {
                               disabled={cargandoVehiculosUsuario !== null}
                               title="Ver detalles de vehículos activos"
                             >
-                              <i className="bi bi-truck me-1" />
+                              <i className="bi bi-car-front me-1" />
                               <span className="fw-bold">
                                 {cargandoVehiculosUsuario === u.id ? 'Cargando...' : totalVehiculos ?? '-'}
                               </span>

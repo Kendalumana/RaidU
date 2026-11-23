@@ -68,7 +68,7 @@ El servidor estará disponible en: `http://127.0.0.1:8000/`
 
 ### B. Frontend (React 19 + Vite + Bootstrap 5)
 
-**Requisitos previos:** Node.js (v18 o superior) y npm.
+**Requisitos previos:** Node.js (20.19.x o una versión 22.12 o posterior) y npm.
 
 **1. Entrar a la carpeta del frontend:**
 
@@ -79,7 +79,7 @@ cd frontend
 **2. Instalar dependencias:**
 
 ```bash
-npm install
+npm ci
 ```
 
 **3. Configurar variables de entorno:**
@@ -116,6 +116,8 @@ El backend incluye `django-cors-headers` configurado en `config/settings.py` par
 - `http://127.0.0.1:5173`
 
 La autenticación utiliza cabeceras `Authorization: Token <key>`, administradas automáticamente mediante interceptores de Axios en `frontend/src/api/client.js`.
+
+Al cerrar sesión, raidU borra la sesión y el token del navegador. El token de Django sigue vigente hasta su revocación en el servidor. La baja de la cuenta sí elimina su token.
 
 ## Estado actual del proyecto
 

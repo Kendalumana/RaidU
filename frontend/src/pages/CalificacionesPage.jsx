@@ -65,7 +65,7 @@ export default function CalificacionesPage() {
 
   // Filtros
   const [filtroPuntaje, setFiltroPuntaje] = useState('');
-  const [filtroModo, setFiltroModo] = useState('todas'); // 'todas', 'recibidas', 'emitidas'
+  const [filtroModo, setFiltroModo] = useState('recibidas'); // 'recibidas', 'emitidas', o 'todas' (solo staff)
   const [orden, setOrden] = useState('-fecha');
 
   // Promedio y métricas del usuario actual
@@ -396,7 +396,7 @@ export default function CalificacionesPage() {
           </div>
         </div>
 
-        {/* Total de Calificaciones en Sistema */}
+        {/* Total en el apartado activo */}
         <div className="col-12 col-md-4">
           <div className="card border-0 shadow-sm rounded-4 h-100 bg-white">
             <div className="card-body p-4 d-flex align-items-center gap-3">
@@ -413,13 +413,21 @@ export default function CalificacionesPage() {
               </div>
               <div>
                 <small className="text-secondary fw-semibold text-uppercase d-block">
-                  Total Registradas
+                  {filtroModo === 'recibidas'
+                    ? 'Recibidas por ti'
+                    : filtroModo === 'emitidas'
+                    ? 'Emitidas por ti'
+                    : 'Total Registradas'}
                 </small>
                 <h2 className="h3 fw-bold mb-0 text-dark mt-1">
                   {totalRegistros}
                 </h2>
                 <small className="text-secondary">
-                  En el catálogo de calificaciones
+                  {filtroModo === 'recibidas'
+                    ? 'Calificaciones que te han dejado'
+                    : filtroModo === 'emitidas'
+                    ? 'Calificaciones que has otorgado'
+                    : 'En el catálogo del sistema'}
                 </small>
               </div>
             </div>
@@ -481,37 +489,61 @@ export default function CalificacionesPage() {
       ═══════════════════════════════════════ */}
       <section className="card border-0 shadow-sm rounded-4">
         <div className="card-body p-4">
-          {/* BARRA DE FILTROS */}
-          <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-            <h2 className="h5 fw-bold mb-0">
-              Historial de Calificaciones
-            </h2>
+          {/* PESTAÑAS / APARTADOS: RECIBIDAS VS EMITIDAS */}
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom pb-3 mb-4">
+            <ul className="nav nav-pills gap-2" role="tablist">
+              <li className="nav-item">
+                <button
+                  type="button"
+                  className={`nav-link rounded-pill px-4 fw-semibold ${filtroModo === 'recibidas' ? 'active shadow-sm' : 'text-secondary'}`}
+                  onClick={() => {
+                    setFiltroModo('recibidas');
+                    setPagina(1);
+                  }}
+                >
+                  <i className="bi bi-inbox-fill me-2" />
+                  Calificaciones que me dieron
+                </button>
+              </li>
+              <li className="nav-item">
+                <button
+                  type="button"
+                  className={`nav-link rounded-pill px-4 fw-semibold ${filtroModo === 'emitidas' ? 'active shadow-sm' : 'text-secondary'}`}
+                  onClick={() => {
+                    setFiltroModo('emitidas');
+                    setPagina(1);
+                  }}
+                >
+                  <i className="bi bi-send-check-fill me-2" />
+                  Calificaciones que yo di
+                </button>
+              </li>
+              {(esAdmin || esSoporte) && (
+                <li className="nav-item">
+                  <button
+                    type="button"
+                    className={`nav-link rounded-pill px-3 fw-semibold ${filtroModo === 'todas' ? 'active shadow-sm' : 'text-secondary'}`}
+                    onClick={() => {
+                      setFiltroModo('todas');
+                      setPagina(1);
+                    }}
+                  >
+                    <i className="bi bi-globe me-2" />
+                    Todas (Staff)
+                  </button>
+                </li>
+              )}
+            </ul>
 
             <div className="d-flex flex-wrap gap-2">
-              {/* Modo de visualización */}
-              <select
-                className="form-select"
-                value={filtroModo}
-                onChange={(e) => {
-                  setFiltroModo(e.target.value);
-                  setPagina(1);
-                }}
-                style={{ minWidth: 170 }}
-              >
-                <option value="todas">Todas las del sistema</option>
-                <option value="recibidas">Recibidas por mí</option>
-                <option value="emitidas">Emitidas por mí</option>
-              </select>
-
               {/* Filtro por Puntaje */}
               <select
-                className="form-select"
+                className="form-select w-auto"
                 value={filtroPuntaje}
                 onChange={(e) => {
                   setFiltroPuntaje(e.target.value);
                   setPagina(1);
                 }}
-                style={{ minWidth: 150 }}
               >
                 <option value="">Todas las estrellas</option>
                 <option value="5">⭐⭐⭐⭐⭐ (5)</option>
@@ -523,13 +555,12 @@ export default function CalificacionesPage() {
 
               {/* Ordenamiento */}
               <select
-                className="form-select"
+                className="form-select w-auto"
                 value={orden}
                 onChange={(e) => {
                   setOrden(e.target.value);
                   setPagina(1);
                 }}
-                style={{ minWidth: 160 }}
               >
                 <option value="-fecha">Más recientes</option>
                 <option value="fecha">Más antiguas</option>
@@ -537,13 +568,12 @@ export default function CalificacionesPage() {
                 <option value="puntaje">Menor puntaje</option>
               </select>
 
-              {(filtroPuntaje || filtroModo !== 'todas' || orden !== '-fecha') && (
+              {(filtroPuntaje || orden !== '-fecha') && (
                 <button
                   type="button"
                   className="btn btn-outline-secondary"
                   onClick={() => {
                     setFiltroPuntaje('');
-                    setFiltroModo('todas');
                     setOrden('-fecha');
                     setPagina(1);
                   }}
@@ -571,11 +601,19 @@ export default function CalificacionesPage() {
               >
                 <i className="bi bi-star fs-2" />
               </div>
-              <h3 className="h5 fw-bold">No hay calificaciones registradas</h3>
+              <h3 className="h5 fw-bold">
+                {filtroModo === 'recibidas'
+                  ? 'Aún no has recibido calificaciones'
+                  : filtroModo === 'emitidas'
+                  ? 'Aún no has emitido calificaciones'
+                  : 'No hay calificaciones registradas'}
+              </h3>
               <p className="text-secondary mb-3">
-                {filtroPuntaje || filtroModo !== 'todas'
-                  ? 'No hay calificaciones que coincidan con los filtros aplicados.'
-                  : 'Aún no se han emitido calificaciones para los viajes finalizados.'}
+                {filtroPuntaje
+                  ? 'No hay calificaciones que coincidan con el puntaje seleccionado.'
+                  : filtroModo === 'recibidas'
+                  ? 'Las calificaciones que otros participantes dejen sobre tus viajes aparecerán aquí.'
+                  : 'Aquí verás las evaluaciones que hayas realizado a conductores o pasajeros.'}
               </p>
               {!esSoporte && (
                 <button type="button" className="btn btn-outline-primary btn-sm rounded-pill" onClick={abrirNuevo}>

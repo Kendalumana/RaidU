@@ -88,6 +88,46 @@ function formatoDinero(valor) {
   }).format(Number(valor || 0));
 }
 
+function AccionesReserva({ reserva, onEditar, onCancelar, onEliminar, esSoporte }) {
+  if (reserva.estado === 'cancelada') {
+    return <span className="small text-secondary">Sin acciones</span>;
+  }
+  if (esSoporte) {
+    return <span className="small text-secondary">Solo lectura</span>;
+  }
+  return (
+    <div className="d-flex gap-1 justify-content-end flex-wrap">
+      <button
+        type="button"
+        className="btn btn-outline-primary btn-sm"
+        onClick={() => onEditar(reserva)}
+        title="Editar reserva"
+      >
+        <i className="bi bi-pencil me-1" />
+        Editar
+      </button>
+      <button
+        type="button"
+        className="btn btn-outline-warning btn-sm"
+        onClick={() => onCancelar(reserva)}
+        title="Cancelar reserva"
+      >
+        <i className="bi bi-x-circle me-1" />
+        Cancelar
+      </button>
+      <button
+        type="button"
+        className="btn btn-outline-danger btn-sm"
+        onClick={() => onEliminar(reserva)}
+        title="Eliminar reserva"
+      >
+        <i className="bi bi-trash me-1" />
+        Eliminar
+      </button>
+    </div>
+  );
+}
+
 export default function ReservasPage() {
   const {
     user,
@@ -312,6 +352,19 @@ export default function ReservasPage() {
     }));
 
     setPagina(1);
+  };
+
+  const handleEditar = (reserva) => {
+    setEditando(reserva);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelar = (reserva) => {
+    setConfirmacion({ tipo: 'cancelar', reserva });
+  };
+
+  const handleEliminar = (reserva) => {
+    setConfirmacion({ tipo: 'eliminar', reserva });
   };
 
   const confirmarAccion = async () => {
@@ -583,9 +636,66 @@ export default function ReservasPage() {
 
           ) : (
 
-            /* TABLA */
+            <>
+              {/* VISTA MÓVIL (TARJETAS) */}
+              <div className="d-md-none d-flex flex-column gap-3 mb-3">
+                {reservas.map((reserva) => {
+                  const viaje = viajesPorId[reserva.viaje];
+                  return (
+                    <div key={reserva.id} className="card border shadow-sm rounded-3">
+                      <div className="card-body p-3">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span className="badge text-bg-light border text-secondary">
+                            Reserva #{reserva.id}
+                          </span>
+                          <span
+                            className={`badge ${
+                              estilosEstado[reserva.estado] || 'text-bg-secondary'
+                            }`}
+                          >
+                            {reserva.estado}
+                          </span>
+                        </div>
 
-            <div className="table-responsive">
+                        <div className="fw-semibold mb-1">
+                          Viaje #{reserva.viaje}
+                        </div>
+                        {viaje && (
+                          <div className="small text-secondary mb-2">
+                            {nombresSede[viaje.sede_origen] || viaje.sede_origen}
+                            {' → '}
+                            {nombresSede[viaje.sede_destino] || viaje.sede_destino}
+                          </div>
+                        )}
+
+                        <div className="d-flex justify-content-between align-items-center small text-secondary border-top pt-2 mt-2">
+                          <div>
+                            <i className="bi bi-person me-1" />Pasajero #{reserva.pasajero}
+                          </div>
+                          <div>
+                            <span className="fw-semibold text-dark">{reserva.cupos} cupo{reserva.cupos > 1 ? 's' : ''}</span>
+                            {' · '}
+                            <span className="text-success fw-bold">{formatoDinero(reserva.monto_simulado)}</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 pt-2 border-top">
+                          <AccionesReserva
+                            reserva={reserva}
+                            onEditar={handleEditar}
+                            onCancelar={handleCancelar}
+                            onEliminar={handleEliminar}
+                            esSoporte={esSoporte}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* VISTA ESCRITORIO (TABLA) */}
+              <div className="table-responsive d-none d-md-block">
 
               <table className="table table-hover align-middle">
 
@@ -685,85 +795,21 @@ export default function ReservasPage() {
 
                         {/* ACCIONES */}
                         <td className="text-end text-nowrap">
-
-                          {!esSoporte &&
-                            reserva.estado ===
-                              'confirmada' && (
-                              <>
-
-                                {/* EDITAR */}
-                                <button
-                                  type="button"
-                                  className="btn btn-outline-primary btn-sm me-2"
-                                  onClick={() => {
-                                    setEditando(
-                                      reserva
-                                    );
-
-                                    window.scrollTo({
-                                      top: 0,
-                                      behavior:
-                                        'smooth',
-                                    });
-                                  }}
-                                >
-                                  <i className="bi bi-pencil me-1" />
-                                  Editar
-                                </button>
-
-                                {/* CANCELAR PATCH */}
-                                <button
-                                  type="button"
-                                  className="btn btn-outline-warning btn-sm me-2"
-                                  onClick={() =>
-                                    setConfirmacion({
-                                      tipo: 'cancelar',
-                                      reserva,
-                                  })
-                                  }
-                                >
-                                  <i className="bi bi-x-circle me-1" />
-                                  Cancelar
-                                </button>
-
-                                {/* DELETE */}
-                                <button
-                                  type="button"
-                                  className="btn btn-outline-danger btn-sm"
-                                  onClick={() =>
-                                    setConfirmacion({
-                                      tipo: 'eliminar',
-                                      reserva,
-                                    })
-                                  }
-                                >
-                                  <i className="bi bi-trash me-1" />
-                                  Eliminar
-                                </button>
-                              </>
-                            )}
-
-                          {reserva.estado ===
-                            'cancelada' && (
-                            <span className="small text-secondary">
-                              Sin acciones
-                            </span>
-                          )}
-
-                          {esSoporte &&
-                            reserva.estado !==
-                              'cancelada' && (
-                              <span className="small text-secondary">
-                                Solo lectura
-                              </span>
-                            )}
+                          <AccionesReserva
+                            reserva={reserva}
+                            onEditar={handleEditar}
+                            onCancelar={handleCancelar}
+                            onEliminar={handleEliminar}
+                            esSoporte={esSoporte}
+                          />
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
 
           {/* ═══════════════════════════════════

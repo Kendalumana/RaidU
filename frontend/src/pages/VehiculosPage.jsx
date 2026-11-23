@@ -610,6 +610,7 @@ export default function VehiculosPage() {
                         placeholder="Ej: ABC-123 o 123456"
                         maxLength={8}
                         value={form.placa}
+                        disabled={editandoId !== null}
                         onChange={(e) => {
                           const val = e.target.value.toUpperCase();
                           setForm({ ...form, placa: val });
@@ -651,7 +652,9 @@ export default function VehiculosPage() {
                         </div>
                       )}
                       <span className="text-secondary small d-block mt-1" style={{ fontSize: '0.68rem' }}>
-                        Hasta 6 caracteres (ej: ABC-123, 12ABC1 o 123456). Vehículos particulares UCR.
+                        {editandoId !== null
+                          ? 'La placa no se puede cambiar después de registrar el vehículo.'
+                          : 'Hasta 6 caracteres (ej: ABC-123, 12ABC1 o 123456). Vehículos particulares UCR.'}
                       </span>
                     </div>
 

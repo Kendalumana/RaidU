@@ -224,7 +224,15 @@ export default function ReservasPage() {
       return true;
 
     } catch (e) {
-      setError(getError(e));
+      const isConflict = e?.response?.status === 409;
+      if (isConflict) {
+        setError(
+          'El cupo seleccionado ya fue ocupado por otro pasajero. Se ha actualizado la disponibilidad de cupos en el formulario.'
+        );
+        await cargarViajesDisponibles();
+      } else {
+        setError(getError(e));
+      }
       return false;
 
     } finally {

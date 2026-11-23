@@ -12,12 +12,32 @@ const contarResultados = (data) => {
   return 0;
 };
 
+const obtenerTodosLosResultados = async (ruta) => {
+  const { data: primeraPagina } = await api.get(ruta, { params: { page: 1 } });
+  const resultadosIniciales = primeraPagina.resultados ?? primeraPagina.results ?? [];
+  const totalPaginas = Number(primeraPagina.total_paginas ?? primeraPagina.total_pages ?? 1);
+
+  if (totalPaginas <= 1) return resultadosIniciales;
+
+  const paginasRestantes = await Promise.all(
+    Array.from({ length: totalPaginas - 1 }, (_, indice) =>
+      api.get(ruta, { params: { page: indice + 2 } })
+    )
+  );
+
+  return [
+    ...resultadosIniciales,
+    ...paginasRestantes.flatMap(({ data }) => data.resultados ?? data.results ?? []),
+  ];
+};
+
 export default function Dashboard() {
   const { user, rol, esAdmin } = useAuth();
   const [stats, setStats] = useState({
     vehiculos: null,
     viajes: null,
     reservas: null,
+    cuposReservados: null,
     promedio: null,
     promedioError: false,
     totalUsuarios: null,
@@ -49,6 +69,49 @@ export default function Dashboard() {
     }
   }, []);
 
+  const cargarViajesReservables = useCallback(async () => {
+    setLoadingCards((actual) => ({ ...actual, viajes: true }));
+    setFailedCards((actual) => ({ ...actual, viajes: false }));
+
+    try {
+      const viajes = await obtenerTodosLosResultados('/viajes/');
+      const reservables = viajes.filter((viaje) => {
+        const estaPublicado = viaje.estado === 'publicado';
+        const tieneCupos = Number(viaje.cupos_disponibles) > 0;
+        const esPropio = Number(viaje.conductor) === Number(user?.id);
+        return estaPublicado && tieneCupos && (esStaff || !esPropio);
+      });
+      setStats((actual) => ({ ...actual, viajes: reservables.length }));
+    } catch {
+      setStats((actual) => ({ ...actual, viajes: null }));
+      setFailedCards((actual) => ({ ...actual, viajes: true }));
+    } finally {
+      setLoadingCards((actual) => ({ ...actual, viajes: false }));
+    }
+  }, [esStaff, user?.id]);
+
+  const cargarReservas = useCallback(async () => {
+    setLoadingCards((actual) => ({ ...actual, reservas: true }));
+    setFailedCards((actual) => ({ ...actual, reservas: false }));
+
+    try {
+      const reservas = await obtenerTodosLosResultados('/reservas/');
+      const cuposReservados = reservas
+        .filter((reserva) => reserva.estado !== 'cancelada')
+        .reduce((total, reserva) => total + (Number(reserva.cupos) || 0), 0);
+      setStats((actual) => ({
+        ...actual,
+        reservas: reservas.length,
+        cuposReservados,
+      }));
+    } catch {
+      setStats((actual) => ({ ...actual, reservas: null, cuposReservados: null }));
+      setFailedCards((actual) => ({ ...actual, reservas: true }));
+    } finally {
+      setLoadingCards((actual) => ({ ...actual, reservas: false }));
+    }
+  }, []);
+
   const cargarPromedio = useCallback(async () => {
     if (!user?.id) {
       setLoadingCards((actual) => ({ ...actual, promedio: false }));
@@ -75,17 +138,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     cargarLista('vehiculos', '/vehiculos/?page=1');
-    cargarLista('viajes', '/viajes/?page=1');
-    cargarLista('reservas', '/reservas/?page=1');
+    cargarViajesReservables();
+    cargarReservas();
     cargarPromedio();
     if (esStaff) cargarLista('totalUsuarios', '/usuarios/?page=1');
-  }, [cargarLista, cargarPromedio, esStaff]);
+  }, [cargarLista, cargarPromedio, cargarReservas, cargarViajesReservables, esStaff]);
 
   // Tarjetas principales 
   const statCards = [
     {
       id: 'vehiculos',
-      label: 'Mis Vehículos',
+      label: esStaff ? 'Vehículos del sistema' : 'Mis Vehículos',
       value: stats.vehiculos ?? 'No disponible',
       loading: loadingCards.vehiculos,
       retry: () => cargarLista('vehiculos', '/vehiculos/?page=1'),
@@ -102,13 +165,13 @@ export default function Dashboard() {
     },
     {
       id: 'viajes',
-      label: 'Viajes Disponibles',
+      label: esStaff ? 'Viajes con cupos en el sistema' : 'Viajes reservables',
       value: stats.viajes ?? 'No disponible',
       loading: loadingCards.viajes,
-      retry: () => cargarLista('viajes', '/viajes/?page=1'),
+      retry: cargarViajesReservables,
       unit: stats.viajes === null
         ? 'No se pudieron cargar los viajes'
-        : stats.viajes === 1 ? 'Ruta activa' : 'Rutas activas',
+        : stats.viajes === 1 ? 'Viaje reservable' : 'Viajes reservables',
       unavailable: failedCards.viajes,
       icon: 'bi-compass',
       iconColor: '#8b5cf6',
@@ -119,13 +182,13 @@ export default function Dashboard() {
     },
     {
       id: 'reservas',
-      label: 'Mis Reservas',
+      label: esStaff ? 'Reservas del sistema' : 'Mis Reservas',
       value: stats.reservas ?? 'No disponible',
       loading: loadingCards.reservas,
-      retry: () => cargarLista('reservas', '/reservas/?page=1'),
+      retry: cargarReservas,
       unit: stats.reservas === null
         ? 'No se pudieron cargar las reservas'
-        : stats.reservas === 1 ? 'Cupo reservado' : 'Cupos reservados',
+        : `${stats.cuposReservados ?? 0} ${stats.cuposReservados === 1 ? 'cupo reservado' : 'cupos reservados'}`,
       unavailable: failedCards.reservas,
       icon: 'bi-ticket-perforated',
       iconColor: '#f59e0b',

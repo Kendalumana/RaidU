@@ -315,7 +315,7 @@ conservan su configuración administrativa previa.
 
 La suite incluye nueve pruebas de formularios administrativos, permisos, CSRF,
 recálculo y cancelación. La evidencia de esta ampliación está en
-`docs/evidencia-admin.txt`.
+`docs/Backend/evidencia-admin.txt`.
 
 ### Recorridos de Postman y datos ficticios
 
@@ -357,15 +357,19 @@ permanece disponible para pruebas manuales específicas.
 
 ## Evidencia y revisión
 
-- [Documento técnico y diagrama ER](docs/documento-tecnico.md).
-- [Documento técnico actualizado en Word](docs/Documento_tecnico_RaidU_actualizado.docx).
-- [Resultado de pruebas automatizadas](docs/evidencia-pruebas.txt).
-- [Resultado de Postman](docs/evidencia-postman.txt).
-- [Instalación limpia y cierre](docs/verificacion-entrega.md).
-- [Guía para revisión cruzada](docs/revision-cruzada.md).
+- [Documento técnico y diagrama ER](docs/Backend/documento-tecnico.md).
+- [Documento técnico actualizado en Word](docs/Backend/Documento_tecnico_RaidU_actualizado.docx).
+- [Resultado de pruebas automatizadas](docs/Backend/evidencia-pruebas.txt).
+- [Resultado de Postman](docs/Backend/evidencia-postman.txt).
+- [Instalación limpia y cierre](docs/Backend/verificacion-entrega.md).
+- [Guía para revisión cruzada](docs/Backend/revision-cruzada.md).
 
-Limitaciones: backend sin frontend, pago simulado, sin notificaciones ni cobros reales.
+El pago es simulado. El proyecto no envía notificaciones ni procesa cobros reales.
 Las reservas canceladas no se reactivan y solo se identifica al titular de cada reserva.
 La integración a `main` ya está realizada. El comentario de revisión asistida está
 registrado; el cierre de la revisión cruzada personal sigue pendiente. Consultar
-[el registro de revisión](docs/revision-cruzada.md) para su estado actualizado.
+[el registro de revisión](docs/Backend/revision-cruzada.md) para su estado actualizado.
+
+////////////////////////////////////
+
+El documento de entrega del frontend está en [docs/entrega-proyecto-02-frontend.md](docs/entrega-proyecto-02-frontend.md)

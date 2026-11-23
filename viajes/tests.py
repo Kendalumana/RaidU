@@ -178,3 +178,56 @@ class ViajesAPITests(APITestCase):
                 viaje = Viaje.objects.get(pk=respuesta.data['id'])
                 self.assertEqual(viaje.estado, estado)
                 self.assertEqual(viaje.cupos_disponibles, disponibles)
+
+    def test_mis_viajes_participante(self):
+        resp1 = self.crear(costo_total='1500.00')
+        viaje1_id = resp1.data['id']
+
+        vehiculo_otro = Vehiculo.objects.create(
+            propietario=self.otro, placa='OTR202', marca='Nissan', modelo='Sentra', capacidad=4
+        )
+        self.client.force_authenticate(self.otro)
+        resp2 = self.client.post('/api/viajes/', {
+            'vehiculo': vehiculo_otro.pk,
+            'sede_origen': 'san_ramon',
+            'sede_destino': 'rodrigo_facio',
+            'fecha_hora': (timezone.now() + timedelta(days=2)).isoformat(),
+            'cupos_totales': 3,
+            'costo_total': '3000.00',
+        }, format='json')
+        viaje2_id = resp2.data['id']
+
+        resp3 = self.client.post('/api/viajes/', {
+            'vehiculo': vehiculo_otro.pk,
+            'sede_origen': 'esparza',
+            'sede_destino': 'puntarenas',
+            'fecha_hora': (timezone.now() + timedelta(days=3)).isoformat(),
+            'cupos_totales': 2,
+            'costo_total': '2000.00',
+        }, format='json')
+        viaje3_id = resp3.data['id']
+
+        self.client.force_authenticate(self.usuario)
+        self.client.post('/api/reservas/', {
+            'viaje': viaje2_id,
+            'cupos': 1,
+        }, format='json')
+
+        res_mis = self.client.get('/api/viajes/mis-viajes/')
+        self.assertEqual(res_mis.status_code, 200)
+        ids_mis = [v['id'] for v in res_mis.data['resultados']]
+        self.assertIn(viaje1_id, ids_mis)
+        self.assertIn(viaje2_id, ids_mis)
+        self.assertNotIn(viaje3_id, ids_mis)
+        self.assertEqual(len(ids_mis), len(set(ids_mis)))
+
+        res_param = self.client.get('/api/viajes/?mis_viajes=true')
+        self.assertEqual(res_param.status_code, 200)
+        ids_param = [v['id'] for v in res_param.data['resultados']]
+        self.assertEqual(ids_mis, ids_param)
+
+        res_todos = self.client.get('/api/viajes/')
+        ids_todos = [v['id'] for v in res_todos.data['resultados']]
+        self.assertIn(viaje1_id, ids_todos)
+        self.assertIn(viaje2_id, ids_todos)
+        self.assertIn(viaje3_id, ids_todos)

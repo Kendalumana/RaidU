@@ -216,7 +216,10 @@ export default function ReservasPage() {
         setPagina(1);
       }
 
-      await recargar();
+      await Promise.all([
+        recargar(),
+        cargarViajesDisponibles(),
+      ]);
 
       return true;
 
@@ -247,7 +250,10 @@ export default function ReservasPage() {
         setEditando(null);
       }
 
-      await recargar();
+      await Promise.all([
+        recargar(),
+        cargarViajesDisponibles(),
+      ]);
 
     } catch (e) {
       setError(getError(e));
@@ -276,7 +282,10 @@ export default function ReservasPage() {
         setEditando(null);
       }
 
-      await recargar();
+      await Promise.all([
+        recargar(),
+        cargarViajesDisponibles(),
+      ]);
 
     } catch (e) {
       setError(getError(e));

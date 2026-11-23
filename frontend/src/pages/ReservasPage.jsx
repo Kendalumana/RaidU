@@ -101,9 +101,11 @@ export default function ReservasPage() {
   const [viajes, setViajes] = useState([]);
 
   const [cargando, setCargando] = useState(true);
+  const [cargandoViajes, setCargandoViajes] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
   const [error, setError] = useState('');
+  const [errorReservas, setErrorReservas] = useState('');
   const [exito, setExito] = useState('');
 
   const [editando, setEditando] = useState(null);
@@ -138,7 +140,7 @@ export default function ReservasPage() {
   // ───────────────────────────────────────────
   const recargar = useCallback(async () => {
     setCargando(true);
-    setError('');
+    setErrorReservas('');
 
     try {
       const resultado = await listReservas({
@@ -152,7 +154,7 @@ export default function ReservasPage() {
       setTotal(resultado.total);
 
     } catch (e) {
-      setError(getError(e));
+      setErrorReservas(getError(e));
 
     } finally {
       setCargando(false);
@@ -164,20 +166,23 @@ export default function ReservasPage() {
   }, [recargar]);
 
   // ───────────────────────────────────────────
-  // CARGAR VIAJES
+  // CARGAR VIAJES DISPONIBLES
   // ───────────────────────────────────────────
-  useEffect(() => {
-    async function cargarViajes() {
-      try {
-        const lista = await listAllViajes();
-        setViajes(lista);
-      } catch (e) {
-        setError(getError(e));
-      }
+  const cargarViajesDisponibles = useCallback(async () => {
+    setCargandoViajes(true);
+    try {
+      const lista = await listAllViajes();
+      setViajes(lista);
+    } catch (e) {
+      setError(getError(e));
+    } finally {
+      setCargandoViajes(false);
     }
-
-    cargarViajes();
   }, []);
+
+  useEffect(() => {
+    cargarViajesDisponibles();
+  }, [cargarViajesDisponibles]);
 
   // ───────────────────────────────────────────
   // CREAR / EDITAR
@@ -397,6 +402,7 @@ export default function ReservasPage() {
         <FormReserva
           reserva={editando}
           viajes={viajes}
+          cargandoViajes={cargandoViajes}
           userId={user?.id}
           onSave={guardar}
           onCancel={() => setEditando(null)}
@@ -485,7 +491,7 @@ export default function ReservasPage() {
             </div>
           </div>
 
-          {/* LOADING */}
+          {/* LOADING / ERROR / EMPTY */}
 
           {cargando ? (
 
@@ -503,6 +509,34 @@ export default function ReservasPage() {
               <p className="text-secondary mt-3 mb-0">
                 Cargando reservas...
               </p>
+            </div>
+
+          ) : errorReservas ? (
+
+            <div className="text-center py-5">
+              <div
+                className="rounded-circle bg-danger bg-opacity-10 text-danger d-inline-flex align-items-center justify-content-center mb-3"
+                style={{ width: 70, height: 70 }}
+              >
+                <i className="bi bi-exclamation-triangle-fill fs-2" />
+              </div>
+
+              <h3 className="h5 fw-bold text-danger">
+                Error al cargar el historial de reservas
+              </h3>
+
+              <p className="text-secondary mb-3">
+                {errorReservas}
+              </p>
+
+              <button
+                type="button"
+                className="btn btn-outline-danger btn-sm px-3"
+                onClick={() => recargar()}
+              >
+                <i className="bi bi-arrow-clockwise me-1" />
+                Reintentar historial
+              </button>
             </div>
 
           ) : reservas.length === 0 ? (

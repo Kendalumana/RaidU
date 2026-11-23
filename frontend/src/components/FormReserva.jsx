@@ -15,6 +15,7 @@ const nombresSede = {
 export default function FormReserva({
   reserva,
   viajes,
+  cargandoViajes = false,
   userId,
   onSave,
   onCancel,
@@ -108,12 +109,17 @@ export default function FormReserva({
           </div>
         </div>
 
-        {!reserva && viajesDisponibles.length === 0 && (
-          <div className="alert alert-warning">
+        {cargandoViajes ? (
+          <div className="alert alert-info py-2 d-flex align-items-center mb-3">
+            <span className="spinner-border spinner-border-sm me-2" role="status" />
+            <span>Cargando viajes disponibles...</span>
+          </div>
+        ) : !reserva && viajesDisponibles.length === 0 ? (
+          <div className="alert alert-warning py-2 mb-3">
             <i className="bi bi-exclamation-triangle me-2" />
             No hay viajes disponibles para reservar en este momento.
           </div>
-        )}
+        ) : null}
 
         <form onSubmit={submit}>
           <div className="row g-3">
@@ -133,11 +139,11 @@ export default function FormReserva({
                 className="form-select"
                 value={form.viaje}
                 onChange={change}
-                disabled={Boolean(reserva)}
+                disabled={Boolean(reserva) || cargandoViajes || saving}
                 required
               >
                 <option value="">
-                  Seleccione un viaje...
+                  {cargandoViajes ? 'Cargando viajes disponibles...' : 'Seleccione un viaje...'}
                 </option>
 
                 {(reserva
@@ -199,6 +205,8 @@ export default function FormReserva({
               className="btn btn-primary"
               disabled={
                 saving ||
+                cargandoViajes ||
+                !form.viaje ||
                 (!reserva &&
                   viajesDisponibles.length === 0)
               }

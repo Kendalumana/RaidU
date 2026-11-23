@@ -23,10 +23,10 @@ export default function AppLayout() {
     { to: '/perfil', icon: 'bi-person-circle', label: 'Mi Perfil' },
   ];
 
-  // En móvil: Lo personal (Perfil y Calificaciones) se accede desde
-  // el menú superior derecho del avatar, para no duplicarlo en el drawer.
+  // En móvil: Perfil se mantiene en el menú del avatar; Calificaciones
+  // también queda visible en el menú lateral.
   const navItemsMovil = navItems.filter(
-    (item) => item.to !== '/calificaciones' && item.to !== '/perfil'
+    (item) => item.to !== '/perfil'
   );
 
   return (

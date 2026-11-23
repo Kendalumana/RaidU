@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { api, getError } from '../api/client.js';
+import { getMisViajes, getViajes, createViaje, updateViaje, deleteViaje } from '../services/viajeService.js';
 import { Link } from 'react-router-dom';
 
 /* ── Sedes oficiales del sistema RaidU (Viaje.Sede) ── */
@@ -36,6 +37,9 @@ const FORM_VACIO = {
 
 export default function ViajesPage() {
   const { user, esAdmin } = useAuth();
+
+  /* ── vista activa: 'mis_viajes' (participante) o 'todos' (catálogo general) ── */
+  const [vista, setVista] = useState('mis_viajes');
 
   /* ── estado listado ── */
   const [viajes, setViajes] = useState([]);
@@ -99,11 +103,10 @@ export default function ViajesPage() {
       setLoading(true);
       setListError('');
       try {
-        const params = new URLSearchParams({ page: p });
-        Object.entries(filtros).forEach(([k, v]) => {
-          if (v) params.set(k, v);
-        });
-        const { data } = await api.get(`/viajes/?${params}`);
+        const data =
+          vista === 'mis_viajes'
+            ? await getMisViajes(filtros, p)
+            : await getViajes(filtros, p);
         setViajes(data.resultados || []);
         setPage(data.pagina_actual || p);
         setTotalPages(data.total_paginas || 1);
@@ -114,7 +117,7 @@ export default function ViajesPage() {
         setLoading(false);
       }
     },
-    [filtros]
+    [filtros, vista]
   );
 
   useEffect(() => {
@@ -122,8 +125,8 @@ export default function ViajesPage() {
   }, [cargarVehiculos]);
 
   useEffect(() => {
-    cargarViajes();
-  }, [cargarViajes]);
+    cargarViajes(1);
+  }, [filtros, vista]);
 
   /* ═══ 3. Manejo de formulario y validación dinámica de asientos ═══ */
   const change = (e) => {
@@ -154,7 +157,9 @@ export default function ViajesPage() {
   };
 
   const changeFiltro = (e) => {
-    setFiltros((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFiltros((prev) => ({ ...prev, [name]: value }));
+    setPage(1);
   };
 
   const limpiarFiltros = () => {
@@ -165,6 +170,14 @@ export default function ViajesPage() {
       fecha: '',
       ordering: 'fecha_hora',
     });
+    setPage(1);
+  };
+
+  const cambiarVista = (nuevaVista) => {
+    if (nuevaVista !== vista) {
+      setVista(nuevaVista);
+      setPage(1);
+    }
   };
 
   const abrirCrear = () => {
@@ -338,14 +351,36 @@ export default function ViajesPage() {
       <div className="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
         <div>
           <h1 className="h3 fw-bold mb-1">
-            <i className="bi bi-map me-2 text-success" />Catálogo de Viajes
+            <i className="bi bi-map me-2 text-success" />
+            {vista === 'mis_viajes' ? 'Mis Viajes (Conductor / Pasajero)' : 'Catálogo General de Viajes'}
           </h1>
           <p className="text-secondary small mb-0">
-            Encuentre u ofrezca transporte compartido seguro entre sedes de la Universidad de Costa Rica
+            {vista === 'mis_viajes'
+              ? 'Viajes que usted conduce o en los que participa con reserva confirmada'
+              : 'Encuentre u ofrezca transporte compartido seguro entre sedes de la Universidad de Costa Rica'}
           </p>
         </div>
 
-        <div className="d-flex gap-2">
+        <div className="d-flex gap-2 align-items-center flex-wrap">
+          <div className="btn-group shadow-sm" role="group" aria-label="Selector de viajes">
+            <button
+              type="button"
+              className={`btn btn-sm ${vista === 'mis_viajes' ? 'btn-success text-white' : 'btn-outline-secondary'}`}
+              onClick={() => cambiarVista('mis_viajes')}
+            >
+              <i className="bi bi-person-badge me-1" />
+              Mis Viajes
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${vista === 'todos' ? 'btn-success text-white' : 'btn-outline-secondary'}`}
+              onClick={() => cambiarVista('todos')}
+            >
+              <i className="bi bi-compass me-1" />
+              Todos los Viajes
+            </button>
+          </div>
+
           <button
             className={`btn btn-outline-secondary btn-sm ${showFiltros ? 'active' : ''}`}
             onClick={() => setShowFiltros(!showFiltros)}

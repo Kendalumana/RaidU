@@ -1,7 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { api } from '../api/client.js';
+
+const contarResultados = (data) => {
+  if (typeof data.total_registros === 'number') return data.total_registros;
+  if (typeof data.count === 'number') return data.count;
+  if (Array.isArray(data)) return data.length;
+  if (Array.isArray(data.results) || Array.isArray(data.resultados))
+    return (data.results || data.resultados).length;
+  return 0;
+};
 
 export default function Dashboard() {
   const { user, rol, esAdmin } = useAuth();
@@ -13,77 +22,77 @@ export default function Dashboard() {
     promedioError: false,
     totalUsuarios: null,
   });
-  const [loading, setLoading] = useState(true);
+  const [loadingCards, setLoadingCards] = useState({
+    vehiculos: true,
+    viajes: true,
+    reservas: true,
+    promedio: true,
+    totalUsuarios: true,
+  });
+  const [failedCards, setFailedCards] = useState({});
   const [activeTab, setActiveTab] = useState('Todas');
 
   const esStaff = esAdmin || rol === 'admin' || rol === 'soporte';
 
+  const cargarLista = useCallback(async (indicador, ruta) => {
+    setLoadingCards((actual) => ({ ...actual, [indicador]: true }));
+    setFailedCards((actual) => ({ ...actual, [indicador]: false }));
+
+    try {
+      const { data } = await api.get(ruta);
+      setStats((actual) => ({ ...actual, [indicador]: contarResultados(data) }));
+    } catch {
+      setStats((actual) => ({ ...actual, [indicador]: null }));
+      setFailedCards((actual) => ({ ...actual, [indicador]: true }));
+    } finally {
+      setLoadingCards((actual) => ({ ...actual, [indicador]: false }));
+    }
+  }, []);
+
+  const cargarPromedio = useCallback(async () => {
+    if (!user?.id) {
+      setLoadingCards((actual) => ({ ...actual, promedio: false }));
+      setStats((actual) => ({ ...actual, promedio: null, promedioError: false }));
+      return;
+    }
+
+    setLoadingCards((actual) => ({ ...actual, promedio: true }));
+    setFailedCards((actual) => ({ ...actual, promedio: false }));
+    try {
+      const { data } = await api.get(`/calificaciones/promedio/${user.id}/`);
+      setStats((actual) => ({
+        ...actual,
+        promedio: data.promedio ?? null,
+        promedioError: false,
+      }));
+    } catch {
+      setStats((actual) => ({ ...actual, promedio: null, promedioError: true }));
+      setFailedCards((actual) => ({ ...actual, promedio: true }));
+    } finally {
+      setLoadingCards((actual) => ({ ...actual, promedio: false }));
+    }
+  }, [user?.id]);
+
   useEffect(() => {
-    const cargarDatos = async () => {
-      try {
-        const contarResultados = (r) => {
-          if (r.status !== 'fulfilled') return null;
-          const d = r.value.data;
-          if (typeof d.total_registros === 'number') return d.total_registros;
-          if (typeof d.count === 'number') return d.count;
-          if (Array.isArray(d)) return d.length;
-          if (Array.isArray(d.results) || Array.isArray(d.resultados))
-            return (d.results || d.resultados).length;
-          return 0;
-        };
+    cargarLista('vehiculos', '/vehiculos/?page=1');
+    cargarLista('viajes', '/viajes/?page=1');
+    cargarLista('reservas', '/reservas/?page=1');
+    cargarPromedio();
+    if (esStaff) cargarLista('totalUsuarios', '/usuarios/?page=1');
+  }, [cargarLista, cargarPromedio, esStaff]);
 
-        const peticiones = [
-          api.get('/vehiculos/?page=1'),
-          api.get('/viajes/?page=1'),
-          api.get('/reservas/?page=1'),
-        ];
-
-        if (esStaff) {
-          peticiones.push(api.get('/usuarios/?page=1'));
-        }
-
-        const respuestas = await Promise.allSettled(peticiones);
-        const [veh, via, res, usr] = respuestas;
-
-        let prom = null;
-        let promedioError = false;
-        if (user?.id) {
-          try {
-            const { data } = await api.get(`/calificaciones/promedio/${user.id}/`);
-            prom = data.promedio ?? null;
-          } catch {
-            promedioError = true;
-          }
-        }
-
-        setStats({
-          vehiculos: contarResultados(veh),
-          viajes: contarResultados(via),
-          reservas: contarResultados(res),
-          promedio: prom,
-          promedioError,
-          totalUsuarios: esStaff && usr ? contarResultados(usr) : 0,
-        });
-      } catch {
-        // Fallback silencioso para no romper la UI
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    cargarDatos();
-  }, [user?.id, esStaff]);
-
-  // Tarjetas principales con datos 100% reales provenientes de Django REST Framework
+  // Tarjetas principales 
   const statCards = [
     {
       id: 'vehiculos',
       label: 'Mis Vehículos',
       value: stats.vehiculos ?? 'No disponible',
+      loading: loadingCards.vehiculos,
+      retry: () => cargarLista('vehiculos', '/vehiculos/?page=1'),
       unit: stats.vehiculos === null
         ? 'No se pudieron cargar los vehículos'
         : stats.vehiculos === 1 ? 'Vehículo registrado' : 'Vehículos registrados',
-      unavailable: stats.vehiculos === null,
+      unavailable: failedCards.vehiculos,
       icon: 'bi-truck',
       iconColor: '#0284c7',
       iconBg: '#e0f2fe',
@@ -95,10 +104,12 @@ export default function Dashboard() {
       id: 'viajes',
       label: 'Viajes Disponibles',
       value: stats.viajes ?? 'No disponible',
+      loading: loadingCards.viajes,
+      retry: () => cargarLista('viajes', '/viajes/?page=1'),
       unit: stats.viajes === null
         ? 'No se pudieron cargar los viajes'
         : stats.viajes === 1 ? 'Ruta activa' : 'Rutas activas',
-      unavailable: stats.viajes === null,
+      unavailable: failedCards.viajes,
       icon: 'bi-compass',
       iconColor: '#8b5cf6',
       iconBg: '#f3e8ff',
@@ -110,10 +121,12 @@ export default function Dashboard() {
       id: 'reservas',
       label: 'Mis Reservas',
       value: stats.reservas ?? 'No disponible',
+      loading: loadingCards.reservas,
+      retry: () => cargarLista('reservas', '/reservas/?page=1'),
       unit: stats.reservas === null
         ? 'No se pudieron cargar las reservas'
         : stats.reservas === 1 ? 'Cupo reservado' : 'Cupos reservados',
-      unavailable: stats.reservas === null,
+      unavailable: failedCards.reservas,
       icon: 'bi-ticket-perforated',
       iconColor: '#f59e0b',
       iconBg: '#fef3c7',
@@ -127,10 +140,12 @@ export default function Dashboard() {
       value: stats.promedioError
         ? 'No disponible'
         : stats.promedio !== null ? Number(stats.promedio).toFixed(1) : '-',
+      loading: loadingCards.promedio,
+      retry: cargarPromedio,
       unit: stats.promedioError
         ? 'No se pudo consultar el promedio'
         : stats.promedio !== null ? 'Puntaje de 5.0' : 'Sin calificaciones',
-      unavailable: stats.promedioError,
+      unavailable: failedCards.promedio,
       icon: 'bi-star',
       iconColor: '#10b981',
       iconBg: '#d1fae5',
@@ -176,7 +191,9 @@ export default function Dashboard() {
             <div>
               <div className="fw-bold text-dark">Acceso de Personal ({rol?.toUpperCase()})</div>
               <div className="text-secondary small">
-                {stats.totalUsuarios === null
+                {loadingCards.totalUsuarios
+                  ? 'Consultando total de cuentas...'
+                  : stats.totalUsuarios === null
                   ? 'No disponible: no se pudo consultar el total de cuentas.'
                   : stats.totalUsuarios > 0
                   ? `Se registran ${stats.totalUsuarios} cuentas en el sistema.`
@@ -192,16 +209,11 @@ export default function Dashboard() {
       )}
 
       {/* ── 4 Tarjetas de Estadísticas Principales ── */}
-      {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status" />
-          <p className="mt-2 text-secondary small">Cargando indicadores reales desde la API…</p>
-        </div>
-      ) : (
-        <div className="row g-3">
-          {statCards.map((card) => (
-            <div className="col-12 col-sm-6 col-xl-3" key={card.id}>
-              <Link to={card.to} className="text-decoration-none">
+      <div className="row g-3">
+        {statCards.map((card) => (
+          <div className="col-12 col-sm-6 col-xl-3" key={card.id}>
+            <div className="h-100 d-flex flex-column gap-2">
+              <Link to={card.to} className="text-decoration-none flex-grow-1">
                 <div className="stat-card-white h-100 d-flex flex-column justify-content-between">
                   <div className="d-flex justify-content-between align-items-start mb-3">
                     <div
@@ -215,25 +227,31 @@ export default function Dashboard() {
                     >
                       <i className={`bi ${card.icon} fs-5`} />
                     </div>
-                    <span className={`badge rounded-pill px-2 py-1 small fw-medium ${card.unavailable ? 'text-danger bg-danger-subtle' : card.pillColor}`}>
-                      {card.unavailable ? 'Error de consulta' : card.pill}
+                    <span className={`badge rounded-pill px-2 py-1 small fw-medium ${card.loading ? 'text-secondary bg-light' : card.unavailable ? 'text-danger bg-danger-subtle' : card.pillColor}`}>
+                      {card.loading ? 'Cargando...' : card.unavailable ? 'Error de consulta' : card.pill}
                     </span>
                   </div>
 
                   <div>
-                    <div className="h3 fw-bold text-dark mb-0">{card.value}</div>
+                    <div className="h3 fw-bold text-dark mb-0">
+                      {card.loading ? <span className="spinner-border spinner-border-sm text-primary" role="status" aria-label="Cargando" /> : card.value}
+                    </div>
                     <div className="text-secondary small fw-medium mt-1">{card.label}</div>
                     <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
-                      {card.unit}
+                      {card.loading ? 'Cargando...' : card.unit}
                     </div>
                   </div>
                 </div>
               </Link>
+              {card.unavailable && !card.loading && (
+                <button type="button" className="btn btn-outline-primary btn-sm" onClick={card.retry}>
+                  Reintentar {card.id === 'calificaciones' ? 'calificación' : card.label.toLowerCase()}
+                </button>
+              )}
             </div>
-          ))}
-        </div>
-      )}
-
+          </div>
+        ))}
+      </div>
       {/* ── Accesos a los Módulos ── */}
       <div className="card-white p-4">
         <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">

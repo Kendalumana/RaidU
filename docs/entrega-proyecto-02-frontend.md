@@ -30,12 +30,12 @@
 3. **Salida Futura Obligatoria:** La fecha y hora de partida deben ser estrictamente posteriores a la fecha/hora actual.
 4. **Ciclo de Vida del Viaje:** Transiciones permitidas: `publicado` $\rightarrow$ `en_curso` $\rightarrow$ `finalizado` (o `cancelado`).
 5. **Cancelación Atómica:** Al cancelar un viaje, sus reservas asociadas se cancelan automáticamente y se liberan cupos.
-6. **Visualización Relacional al Perfil:** En la vista principal de Viajes (`/viajes`), los estudiantes regulares únicamente visualizan los viajes vinculados con su perfil institucional (aquellos que conducen con sus propios vehículos y aquellos donde cuentan con una reserva confirmada como pasajeros). La consulta y paginación del catálogo global completo con la totalidad de viajes del sistema queda reservada exclusivamente para el rol de Administrador.
+6. **Consulta de viajes:** «Mis viajes» incluye los viajes conducidos y las reservas confirmadas del usuario. «Viajes disponibles» muestra viajes publicados con salida futura y cupos libres.
 
 ### D. Módulo de Reservas
 1. **Exclusión de Viajes Propios y Pasados:** No se permite reservar un viaje conducido por uno mismo ni viajes cuya hora ya transcurrió.
 2. **Unicidad `(viaje, pasajero)`:** Un pasajero solo puede tener una reserva por viaje. Si ya tiene una reserva (confirmada o cancelada), dicho viaje no se ofrece para nuevas reservas.
-3. **Edición Restrictiva:** Al editar una reserva, solo se permite mantener o reducir cupos (liberar asientos); no se permite sobrepasar los cupos originalmente reservados.
+3. **Edición de cupos:** Una reserva confirmada de un viaje editable admite hasta sus cupos actuales más los asientos libres. La API valida la disponibilidad dentro de la transacción.
 4. **Cancelación / Eliminación Atómica:** En el backend se realiza borrado lógico conservando auditoría, mientras que en la interfaz la reserva desaparece de inmediato de las reservas activas.
 5. **Reparto de Costos:** Reparto proporcional exacto entre los cupos reservados mediante cálculo decimal con redondeo hacia abajo, absorbiendo centavos en la última reserva.
 
@@ -87,7 +87,7 @@
 | **2** | **Credenciales Inválidas** | Estudiante | Correo `@ucr.ac.cr` y contraseña errónea | Muestra alerta visual de credenciales incorrectas; no ingresa al sistema. | `400 Bad Request` |
 | **3** | **Registro con Correo no Institucional** | Visitante | Correo `@gmail.com` | El formulario y la API rechazan el registro indicando exigencia de correo `@ucr.ac.cr`. | `400 Bad Request` |
 | **4** | **Intento de Modificación por Soporte** | Soporte | Modificar datos de usuario o vehículo | La vista deshabilita botones y la API responde con restricción de solo lectura. | `403 Forbidden` |
-| **5** | **Alta de Vehículo con Placa Válida** | Conductor | Placa formato UCR, capacidad 4 | Guarda vehículo propio, se lista en la tabla y se vincula al conductor. | `201 Created` |
+| **5** | **Alta de Vehículo con Placa Válida** | Conductor | Placa única de hasta 15 caracteres, capacidad 4 | Guarda vehículo propio, se lista en la tabla y se vincula al conductor. | `201 Created` |
 | **6** | **Eliminación de Vehículo con Viajes** | Conductor | Eliminar vehículo asignado a viajes activos | La API protege la integridad referencial y devuelve conflicto por relaciones protegidas. | `409 Conflict` |
 | **7** | **Publicación de Viaje con Misma Sede** | Conductor | Sede Origen = Sede Destino | Formulario impide seleccionar la misma sede o la API devuelve validación de sedes distintas. | `400 Bad Request` |
 | **8** | **Publicación de Viaje en Fecha Pasada** | Conductor | Fecha/hora anterior a la actual | El sistema rechaza la fecha indicando que la salida debe ser futura. | `400 Bad Request` |

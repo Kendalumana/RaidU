@@ -88,6 +88,46 @@ function formatoDinero(valor) {
   }).format(Number(valor || 0));
 }
 
+function AccionesReserva({ reserva, onEditar, onCancelar, onEliminar, esSoporte }) {
+  if (reserva.estado === 'cancelada') {
+    return <span className="small text-secondary">Sin acciones</span>;
+  }
+  if (esSoporte) {
+    return <span className="small text-secondary">Solo lectura</span>;
+  }
+  return (
+    <div className="d-flex gap-1 justify-content-end flex-wrap">
+      <button
+        type="button"
+        className="btn btn-outline-primary btn-sm"
+        onClick={() => onEditar(reserva)}
+        title="Editar reserva"
+      >
+        <i className="bi bi-pencil me-1" />
+        Editar
+      </button>
+      <button
+        type="button"
+        className="btn btn-outline-warning btn-sm"
+        onClick={() => onCancelar(reserva)}
+        title="Cancelar reserva"
+      >
+        <i className="bi bi-x-circle me-1" />
+        Cancelar
+      </button>
+      <button
+        type="button"
+        className="btn btn-outline-danger btn-sm"
+        onClick={() => onEliminar(reserva)}
+        title="Eliminar reserva"
+      >
+        <i className="bi bi-trash me-1" />
+        Eliminar
+      </button>
+    </div>
+  );
+}
+
 export default function ReservasPage() {
   const {
     user,
@@ -101,9 +141,11 @@ export default function ReservasPage() {
   const [viajes, setViajes] = useState([]);
 
   const [cargando, setCargando] = useState(true);
+  const [cargandoViajes, setCargandoViajes] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
   const [error, setError] = useState('');
+  const [errorReservas, setErrorReservas] = useState('');
   const [exito, setExito] = useState('');
 
   const [editando, setEditando] = useState(null);
@@ -138,7 +180,7 @@ export default function ReservasPage() {
   // ───────────────────────────────────────────
   const recargar = useCallback(async () => {
     setCargando(true);
-    setError('');
+    setErrorReservas('');
 
     try {
       const resultado = await listReservas({
@@ -152,7 +194,7 @@ export default function ReservasPage() {
       setTotal(resultado.total);
 
     } catch (e) {
-      setError(getError(e));
+      setErrorReservas(getError(e));
 
     } finally {
       setCargando(false);
@@ -164,20 +206,23 @@ export default function ReservasPage() {
   }, [recargar]);
 
   // ───────────────────────────────────────────
-  // CARGAR VIAJES
+  // CARGAR VIAJES DISPONIBLES
   // ───────────────────────────────────────────
-  useEffect(() => {
-    async function cargarViajes() {
-      try {
-        const lista = await listAllViajes();
-        setViajes(lista);
-      } catch (e) {
-        setError(getError(e));
-      }
+  const cargarViajesDisponibles = useCallback(async () => {
+    setCargandoViajes(true);
+    try {
+      const lista = await listAllViajes();
+      setViajes(lista);
+    } catch (e) {
+      setError(getError(e));
+    } finally {
+      setCargandoViajes(false);
     }
-
-    cargarViajes();
   }, []);
+
+  useEffect(() => {
+    cargarViajesDisponibles();
+  }, [cargarViajesDisponibles]);
 
   // ───────────────────────────────────────────
   // CREAR / EDITAR
@@ -211,12 +256,23 @@ export default function ReservasPage() {
         setPagina(1);
       }
 
-      await recargar();
+      await Promise.all([
+        recargar(),
+        cargarViajesDisponibles(),
+      ]);
 
       return true;
 
     } catch (e) {
-      setError(getError(e));
+      const isConflict = e?.response?.status === 409;
+      if (isConflict) {
+        setError(
+          'El cupo seleccionado ya fue ocupado por otro pasajero. Se ha actualizado la disponibilidad de cupos en el formulario.'
+        );
+        await cargarViajesDisponibles();
+      } else {
+        setError(getError(e));
+      }
       return false;
 
     } finally {
@@ -242,7 +298,10 @@ export default function ReservasPage() {
         setEditando(null);
       }
 
-      await recargar();
+      await Promise.all([
+        recargar(),
+        cargarViajesDisponibles(),
+      ]);
 
     } catch (e) {
       setError(getError(e));
@@ -271,7 +330,10 @@ export default function ReservasPage() {
         setEditando(null);
       }
 
-      await recargar();
+      await Promise.all([
+        recargar(),
+        cargarViajesDisponibles(),
+      ]);
 
     } catch (e) {
       setError(getError(e));
@@ -290,6 +352,19 @@ export default function ReservasPage() {
     }));
 
     setPagina(1);
+  };
+
+  const handleEditar = (reserva) => {
+    setEditando(reserva);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelar = (reserva) => {
+    setConfirmacion({ tipo: 'cancelar', reserva });
+  };
+
+  const handleEliminar = (reserva) => {
+    setConfirmacion({ tipo: 'eliminar', reserva });
   };
 
   const confirmarAccion = async () => {
@@ -397,6 +472,7 @@ export default function ReservasPage() {
         <FormReserva
           reserva={editando}
           viajes={viajes}
+          cargandoViajes={cargandoViajes}
           userId={user?.id}
           onSave={guardar}
           onCancel={() => setEditando(null)}
@@ -485,7 +561,7 @@ export default function ReservasPage() {
             </div>
           </div>
 
-          {/* LOADING */}
+          {/* LOADING / ERROR / EMPTY */}
 
           {cargando ? (
 
@@ -503,6 +579,34 @@ export default function ReservasPage() {
               <p className="text-secondary mt-3 mb-0">
                 Cargando reservas...
               </p>
+            </div>
+
+          ) : errorReservas ? (
+
+            <div className="text-center py-5">
+              <div
+                className="rounded-circle bg-danger bg-opacity-10 text-danger d-inline-flex align-items-center justify-content-center mb-3"
+                style={{ width: 70, height: 70 }}
+              >
+                <i className="bi bi-exclamation-triangle-fill fs-2" />
+              </div>
+
+              <h3 className="h5 fw-bold text-danger">
+                Error al cargar el historial de reservas
+              </h3>
+
+              <p className="text-secondary mb-3">
+                {errorReservas}
+              </p>
+
+              <button
+                type="button"
+                className="btn btn-outline-danger btn-sm px-3"
+                onClick={() => recargar()}
+              >
+                <i className="bi bi-arrow-clockwise me-1" />
+                Reintentar historial
+              </button>
             </div>
 
           ) : reservas.length === 0 ? (
@@ -532,9 +636,66 @@ export default function ReservasPage() {
 
           ) : (
 
-            /* TABLA */
+            <>
+              {/* VISTA MÓVIL (TARJETAS) */}
+              <div className="d-md-none d-flex flex-column gap-3 mb-3">
+                {reservas.map((reserva) => {
+                  const viaje = viajesPorId[reserva.viaje];
+                  return (
+                    <div key={reserva.id} className="card border shadow-sm rounded-3">
+                      <div className="card-body p-3">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span className="badge text-bg-light border text-secondary">
+                            Reserva #{reserva.id}
+                          </span>
+                          <span
+                            className={`badge ${
+                              estilosEstado[reserva.estado] || 'text-bg-secondary'
+                            }`}
+                          >
+                            {reserva.estado}
+                          </span>
+                        </div>
 
-            <div className="table-responsive">
+                        <div className="fw-semibold mb-1">
+                          Viaje #{reserva.viaje}
+                        </div>
+                        {viaje && (
+                          <div className="small text-secondary mb-2">
+                            {nombresSede[viaje.sede_origen] || viaje.sede_origen}
+                            {' → '}
+                            {nombresSede[viaje.sede_destino] || viaje.sede_destino}
+                          </div>
+                        )}
+
+                        <div className="d-flex justify-content-between align-items-center small text-secondary border-top pt-2 mt-2">
+                          <div>
+                            <i className="bi bi-person me-1" />Pasajero #{reserva.pasajero}
+                          </div>
+                          <div>
+                            <span className="fw-semibold text-dark">{reserva.cupos} cupo{reserva.cupos > 1 ? 's' : ''}</span>
+                            {' · '}
+                            <span className="text-success fw-bold">{formatoDinero(reserva.monto_simulado)}</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 pt-2 border-top">
+                          <AccionesReserva
+                            reserva={reserva}
+                            onEditar={handleEditar}
+                            onCancelar={handleCancelar}
+                            onEliminar={handleEliminar}
+                            esSoporte={esSoporte}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* VISTA ESCRITORIO (TABLA) */}
+              <div className="table-responsive d-none d-md-block">
 
               <table className="table table-hover align-middle">
 
@@ -634,85 +795,21 @@ export default function ReservasPage() {
 
                         {/* ACCIONES */}
                         <td className="text-end text-nowrap">
-
-                          {!esSoporte &&
-                            reserva.estado ===
-                              'confirmada' && (
-                              <>
-
-                                {/* EDITAR */}
-                                <button
-                                  type="button"
-                                  className="btn btn-outline-primary btn-sm me-2"
-                                  onClick={() => {
-                                    setEditando(
-                                      reserva
-                                    );
-
-                                    window.scrollTo({
-                                      top: 0,
-                                      behavior:
-                                        'smooth',
-                                    });
-                                  }}
-                                >
-                                  <i className="bi bi-pencil me-1" />
-                                  Editar
-                                </button>
-
-                                {/* CANCELAR PATCH */}
-                                <button
-                                  type="button"
-                                  className="btn btn-outline-warning btn-sm me-2"
-                                  onClick={() =>
-                                    setConfirmacion({
-                                      tipo: 'cancelar',
-                                      reserva,
-                                  })
-                                  }
-                                >
-                                  <i className="bi bi-x-circle me-1" />
-                                  Cancelar
-                                </button>
-
-                                {/* DELETE */}
-                                <button
-                                  type="button"
-                                  className="btn btn-outline-danger btn-sm"
-                                  onClick={() =>
-                                    setConfirmacion({
-                                      tipo: 'eliminar',
-                                      reserva,
-                                    })
-                                  }
-                                >
-                                  <i className="bi bi-trash me-1" />
-                                  Eliminar
-                                </button>
-                              </>
-                            )}
-
-                          {reserva.estado ===
-                            'cancelada' && (
-                            <span className="small text-secondary">
-                              Sin acciones
-                            </span>
-                          )}
-
-                          {esSoporte &&
-                            reserva.estado !==
-                              'cancelada' && (
-                              <span className="small text-secondary">
-                                Solo lectura
-                              </span>
-                            )}
+                          <AccionesReserva
+                            reserva={reserva}
+                            onEditar={handleEditar}
+                            onCancelar={handleCancelar}
+                            onEliminar={handleEliminar}
+                            esSoporte={esSoporte}
+                          />
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
 
           {/* ═══════════════════════════════════

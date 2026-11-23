@@ -31,6 +31,7 @@ export default function CalificacionesPage() {
   });
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [eliminandoId, setEliminandoId] = useState(null);
   const [formErrors, setFormErrors] = useState({});
 
   /* ── Datos de apoyo para el formulario ── */
@@ -223,38 +224,75 @@ export default function CalificacionesPage() {
 
   /* ═══ 7. Eliminar calificación ═══ */
   const eliminarCalificacion = async (id) => {
+    if (eliminandoId) return;
     if (!window.confirm('¿Está seguro de eliminar esta calificación? Esta acción no se puede deshacer.')) {
       return;
     }
     setMsg('');
     setError('');
+    setEliminandoId(id);
     try {
       await api.delete(`/calificaciones/${id}/`);
       setMsg('Calificación eliminada correctamente.');
-      cargarCalificaciones(page);
-      cargarPromedio();
+      await Promise.all([cargarCalificaciones(page), cargarPromedio()]);
     } catch (err) {
       setError(getError(err));
+    } finally {
+      setEliminandoId(null);
     }
   };
 
-  /* ── Estrellas interactivas en el formulario ── */
+  /* ── Estrellas interactivas y accesibles en el formulario ── */
   const renderEstrellasSelector = () => {
+    const handleKeyDown = (e, val) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const nextVal = Math.min(5, val + 1);
+        setForm((prev) => ({ ...prev, puntaje: nextVal }));
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const prevVal = Math.max(1, val - 1);
+        setForm((prev) => ({ ...prev, puntaje: prevVal }));
+      } else if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        setForm((prev) => ({ ...prev, puntaje: val }));
+      }
+    };
+
     return (
-      <div className="d-flex align-items-center gap-1 my-2">
-        {[1, 2, 3, 4, 5].map((val) => (
-          <button
-            type="button"
-            key={val}
-            className="btn btn-link p-0 text-decoration-none border-0"
-            onClick={() => setForm((prev) => ({ ...prev, puntaje: val }))}
-            style={{ fontSize: '1.75rem', color: val <= form.puntaje ? '#f59e0b' : '#cbd5e1' }}
-            title={`${val} estrella${val > 1 ? 's' : ''}`}
-          >
-            <i className={`bi ${val <= form.puntaje ? 'bi-star-fill' : 'bi-star'}`} />
-          </button>
-        ))}
-        <span className="ms-2 fw-bold text-dark fs-5">{form.puntaje} / 5</span>
+      <div
+        className="d-flex align-items-center gap-1 my-2"
+        role="radiogroup"
+        aria-label="Puntaje de la experiencia de 1 a 5 estrellas"
+      >
+        {[1, 2, 3, 4, 5].map((val) => {
+          const checked = form.puntaje === val;
+          const filled = val <= form.puntaje;
+          return (
+            <button
+              type="button"
+              key={val}
+              role="radio"
+              aria-checked={checked}
+              aria-label={`${val} de 5 estrellas`}
+              tabIndex={checked ? 0 : -1}
+              className="btn btn-link p-1 text-decoration-none border-0 rounded"
+              onClick={() => setForm((prev) => ({ ...prev, puntaje: val }))}
+              onKeyDown={(e) => handleKeyDown(e, val)}
+              style={{
+                fontSize: '1.75rem',
+                color: filled ? '#f59e0b' : '#cbd5e1',
+                lineHeight: 1,
+              }}
+              title={`${val} estrella${val > 1 ? 's' : ''}`}
+            >
+              <i className={`bi ${filled ? 'bi-star-fill' : 'bi-star'}`} />
+            </button>
+          );
+        })}
+        <span className="ms-2 fw-bold text-dark fs-5" aria-live="polite">
+          {form.puntaje} / 5
+        </span>
       </div>
     );
   };
@@ -661,8 +699,18 @@ export default function CalificacionesPage() {
                             className="btn btn-outline-danger btn-sm rounded-pill px-3 py-1"
                             style={{ fontSize: '0.75rem' }}
                             onClick={() => eliminarCalificacion(c.id)}
+                            disabled={eliminandoId === c.id || saving}
                           >
-                            <i className="bi bi-trash me-1" />Eliminar
+                            {eliminandoId === c.id ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />
+                                Eliminando...
+                              </>
+                            ) : (
+                              <>
+                                <i className="bi bi-trash me-1" />Eliminar
+                              </>
+                            )}
                           </button>
                         </div>
                       )}

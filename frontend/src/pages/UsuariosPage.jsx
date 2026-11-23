@@ -10,8 +10,10 @@ export default function UsuariosPage() {
 
   /* ── Estado de listado ── */
   const [usuarios, setUsuarios] = useState([]);
-  const [vehiculos, setVehiculos] = useState([]);
-  const [vehiculosError, setVehiculosError] = useState(false);
+  const [todosLosVehiculos, setTodosLosVehiculos] = useState(null);
+  const [vehiculosPorUsuario, setVehiculosPorUsuario] = useState({});
+  const [erroresVehiculosUsuario, setErroresVehiculosUsuario] = useState({});
+  const [cargandoVehiculosUsuario, setCargandoVehiculosUsuario] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -34,28 +36,11 @@ export default function UsuariosPage() {
       setLoading(true);
       setError('');
       try {
-        const [resUsuarios, resVehiculos] = await Promise.allSettled([
-          api.get(`/usuarios/?page=${p}`),
-          api.get('/vehiculos/?page=1'),
-        ]);
-
-        if (resUsuarios.status === 'fulfilled') {
-          const d = resUsuarios.value.data;
-          setUsuarios(d.results || []);
-          setPage(d.page || p);
-          setTotalPages(d.total_pages || 1);
-          setTotalCount(d.count || 0);
-        } else {
-          setError(getError(resUsuarios.reason));
-        }
-
-        if (resVehiculos.status === 'fulfilled') {
-          setVehiculos(resVehiculos.value.data?.results || []);
-          setVehiculosError(false);
-        } else {
-          setVehiculos([]);
-          setVehiculosError(true);
-        }
+        const { data } = await api.get(`/usuarios/?page=${p}`);
+        setUsuarios(data.results || []);
+        setPage(data.page || p);
+        setTotalPages(data.total_pages || 1);
+        setTotalCount(data.count || 0);
       } catch (err) {
         setError(getError(err));
       } finally {
@@ -70,16 +55,84 @@ export default function UsuariosPage() {
   }, [cargar, page, puedeListar]);
 
   /* ═══ Mapa de vehículos agrupados por ID de propietario ═══ */
-  const vehiculosPorUsuario = useMemo(() => {
-    const mapa = {};
-    vehiculos.forEach((v) => {
-      if (!v.activo) return;
-      const propId = Number(v.propietario);
-      if (!mapa[propId]) mapa[propId] = [];
-      mapa[propId].push(v);
-    });
-    return mapa;
-  }, [vehiculos]);
+  const cargarVehiculosUsuario = async (userId) => {
+    setCargandoVehiculosUsuario(userId);
+    setErroresVehiculosUsuario((prev) => ({ ...prev, [userId]: '' }));
+
+    try {
+      let catalogoCompleto = todosLosVehiculos;
+      if (catalogoCompleto === null) {
+        const primeraRespuesta = await api.get('/vehiculos/?page=1');
+        const primeraPagina = primeraRespuesta.data;
+        catalogoCompleto = [...(primeraPagina.results || [])];
+        const totalPaginasVehiculos = Math.max(Number(primeraPagina.total_pages) || 1, 1);
+
+        for (let paginaVehiculos = 2; paginaVehiculos <= totalPaginasVehiculos; paginaVehiculos += 1) {
+          const respuesta = await api.get(`/vehiculos/?page=${paginaVehiculos}`);
+          catalogoCompleto.push(...(respuesta.data.results || []));
+        }
+
+        setTodosLosVehiculos(catalogoCompleto);
+      }
+
+      const vehiculosActivos = catalogoCompleto.filter(
+        (vehiculo) => Number(vehiculo.propietario) === Number(userId) && vehiculo.activo
+      );
+      setVehiculosPorUsuario((prev) => ({ ...prev, [userId]: vehiculosActivos }));
+    } catch (err) {
+      setErroresVehiculosUsuario((prev) => ({ ...prev, [userId]: getError(err) }));
+    } finally {
+      setCargandoVehiculosUsuario(null);
+    }
+  };
+
+  const toggleVehiculos = (usuario) => {
+    if (cargandoVehiculosUsuario !== null) return;
+
+    const yaExpandido = expandedUserId === usuario.id;
+    setExpandedUserId(yaExpandido ? null : usuario.id);
+
+    const yaCargados = Object.prototype.hasOwnProperty.call(vehiculosPorUsuario, usuario.id);
+    if (!yaExpandido && !yaCargados) cargarVehiculosUsuario(usuario.id);
+  };
+
+  const renderDetalleVehiculos = (usuario) => {
+    if (cargandoVehiculosUsuario === usuario.id) {
+      return <span className="text-muted">Cargando vehículos...</span>;
+    }
+
+    if (erroresVehiculosUsuario[usuario.id]) {
+      return (
+        <div>
+          <span className="text-danger d-block mb-2">No se pudo cargar el detalle: {erroresVehiculosUsuario[usuario.id]}</span>
+          <button
+            type="button"
+            className="btn btn-outline-primary btn-sm"
+            onClick={() => cargarVehiculosUsuario(usuario.id)}
+            disabled={cargandoVehiculosUsuario !== null}
+          >
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+
+    const vehiculosUsuario = vehiculosPorUsuario[usuario.id];
+    if (!vehiculosUsuario) return null;
+    if (vehiculosUsuario.length === 0) {
+      return <span className="text-muted fst-italic">Sin vehículos activos registrados.</span>;
+    }
+
+    return (
+      <ul className="list-unstyled mb-0">
+        {vehiculosUsuario.map((vehiculo) => (
+          <li key={vehiculo.id} className="py-1 border-bottom border-secondary border-opacity-10">
+            <strong>{vehiculo.placa}</strong> - {vehiculo.marca} {vehiculo.modelo} ({vehiculo.capacidad} asientos)
+          </li>
+        ))}
+      </ul>
+    );
+  };
 
   /* ═══ Desactivar cuenta de usuario (DELETE /usuarios/<pk>/) ═══ */
   const desactivar = async (u) => {
@@ -292,7 +345,6 @@ export default function UsuariosPage() {
           {/* Cards responsivas para móvil */}
           <div className="d-md-none">
             {usuariosFiltrados.map((u) => {
-              const userVehs = vehiculosPorUsuario[u.id] || [];
               const totalVehiculos = u.cantidad_vehiculos;
               const esInstitucional = u.email && u.email.toLowerCase().endsWith('@ucr.ac.cr');
               const isExpanded = expandedUserId === u.id;
@@ -326,10 +378,13 @@ export default function UsuariosPage() {
                       <span>Rol: <strong className="text-uppercase">{u.rol || 'Estudiante'}</strong></span>
                       <button
                         className="btn btn-outline-primary btn-sm py-0 px-2"
-                        onClick={() => setExpandedUserId(isExpanded ? null : u.id)}
+                        onClick={() => toggleVehiculos(u)}
+                        disabled={cargandoVehiculosUsuario !== null}
                       >
                         <i className="bi bi-truck me-1" />
-                        {totalVehiculos ?? '—'} vehículo{totalVehiculos !== 1 ? 's' : ''}
+                        {cargandoVehiculosUsuario === u.id
+                          ? 'Cargando...'
+                          : `${totalVehiculos ?? '-'} vehículo${totalVehiculos !== 1 ? 's' : ''}`}
                       </button>
                     </div>
 
@@ -337,20 +392,7 @@ export default function UsuariosPage() {
                     {isExpanded && (
                       <div className="mt-2 p-2 bg-light rounded border small">
                         <strong className="d-block mb-1 text-primary">Vehículos asociados:</strong>
-                        <p className="text-muted mb-1">{vehiculosError ? 'No se pudo cargar el detalle de vehículos.' : 'Detalle parcial: solo se muestra la primera página de vehículos.'}</p>
-                        {userVehs.length === 0 ? (
-                          <span className="text-muted fst-italic">
-                            {vehiculosError ? 'Detalle no disponible.' : totalVehiculos == null ? 'Total de vehículos no disponible.' : totalVehiculos > 0 ? 'Hay vehículos asociados, pero sus detalles no están cargados en esta página.' : 'Sin vehículos activos registrados.'}
-                          </span>
-                        ) : (
-                          <ul className="list-unstyled mb-0">
-                            {userVehs.map((v) => (
-                              <li key={v.id} className="py-1 border-bottom border-secondary border-opacity-10">
-                                <strong>{v.placa}</strong> — {v.marca} {v.modelo} ({v.capacidad} asientos)
-                              </li>
-                            ))}
-                          </ul>
-                        )}
+                        {renderDetalleVehiculos(u)}
                       </div>
                     )}
 
@@ -390,7 +432,6 @@ export default function UsuariosPage() {
                   </thead>
                   <tbody>
                     {usuariosFiltrados.map((u) => {
-                      const userVehs = vehiculosPorUsuario[u.id] || [];
                       const totalVehiculos = u.cantidad_vehiculos;
                       const esInstitucional = u.email && u.email.toLowerCase().endsWith('@ucr.ac.cr');
                       const isExpanded = expandedUserId === u.id;
@@ -433,27 +474,23 @@ export default function UsuariosPage() {
                           </td>
                           <td className="text-center">
                             <button
-                              className={`btn btn-sm ${
-                                userVehs.length > 0 ? 'btn-outline-primary' : 'btn-outline-secondary disabled'
-                              }`}
-                              onClick={() => setExpandedUserId(isExpanded ? null : u.id)}
-                              title={userVehs.length > 0 ? 'Ver detalles de vehículos' : (totalVehiculos > 0 ? 'Hay vehículos asociados, pero el detalle no está cargado' : 'Sin vehículos')}
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() => toggleVehiculos(u)}
+                              disabled={cargandoVehiculosUsuario !== null}
+                              title="Ver detalles de vehículos activos"
                             >
                               <i className="bi bi-truck me-1" />
-                              <span className="fw-bold">{totalVehiculos ?? '—'}</span>
+                              <span className="fw-bold">
+                                {cargandoVehiculosUsuario === u.id ? 'Cargando...' : totalVehiculos ?? '-'}
+                              </span>
                               <i className={`bi bi-chevron-${isExpanded ? 'up' : 'down'} ms-1`} />
                             </button>
 
                             {/* Panel desplegable en la fila */}
-                            {isExpanded && userVehs.length > 0 && (
+                            {isExpanded && (
                               <div className="p-2 mt-2 bg-light rounded text-start small border">
-                                <strong className="text-primary d-block mb-1">Vehículos de {u.first_name || u.email}:</strong>
-                                <p className="text-muted mb-1">Detalle parcial: solo se muestra la primera página de vehículos.</p>
-                                {userVehs.map((v) => (
-                                  <div key={v.id} className="py-1 border-bottom border-white">
-                                    <span className="badge bg-dark me-1">{v.placa}</span> {v.marca} {v.modelo} (Cap: {v.capacidad})
-                                  </div>
-                                ))}
+                                <strong className="text-primary d-block mb-1">Vehículos activos de {u.first_name || u.email}:</strong>
+                                {renderDetalleVehiculos(u)}
                               </div>
                             )}
                           </td>
